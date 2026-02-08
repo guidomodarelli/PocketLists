@@ -1,303 +1,154 @@
-"use client";
+import type { ReactNode } from "react";
+import Link from "next/link";
+import { headers } from "next/headers";
+import TreeList from "@/app/features/lists/components/TreeList";
+import type { ApiError, ItemNode, ListsResponse } from "@/app/features/lists/types";
+import { buildVisibleTree, countByStatus, findNode } from "@/app/features/lists/tree";
+import { confirmParentAction } from "@/app/features/lists/actions";
 
-import { useMemo, useState } from "react";
+type SearchParams = Record<string, string | string[] | undefined>;
 
-type ItemNode = {
-  id: string;
-  title: string;
-  completed: boolean;
-  children: ItemNode[];
+type PageProps = {
+  searchParams?: SearchParams | Promise<SearchParams>;
 };
 
-type TreeMode = "pending" | "completed";
+type FetchResult = { items: ItemNode[] } | { error: string; details?: string };
 
-type VisibleNode = {
-  id: string;
-  title: string;
-  completed: boolean;
-  isContextOnly: boolean;
-  children: VisibleNode[];
-};
+async function getBaseUrl(): Promise<string> {
+  const headerList = await headers();
+  const host = headerList.get("x-forwarded-host") ?? headerList.get("host");
+  const protocol = headerList.get("x-forwarded-proto") ?? "http";
 
-const INITIAL_ITEMS: ItemNode[] = [
-  {
-    id: "ropa",
-    title: "Ropa",
-    completed: false,
-    children: [
-      { id: "ropa-interior", title: "Ropa interior", completed: true, children: [] },
-      { id: "pantalones", title: "Pantalones", completed: true, children: [] },
-      { id: "joggers", title: "Joggers", completed: true, children: [] },
-      { id: "remeras", title: "Remeras", completed: true, children: [] },
-      { id: "camisas", title: "Camisas", completed: true, children: [] },
-      { id: "buzos", title: "Buzos", completed: true, children: [] },
-      { id: "camperas", title: "Camperas", completed: true, children: [] },
-      { id: "zapatillas", title: "Zapatillas", completed: true, children: [] },
-      { id: "cinturones", title: "Cinturones", completed: true, children: [] },
-      { id: "gorro", title: "Gorro de invierno", completed: true, children: [] },
-      { id: "bufanda", title: "Bufanda", completed: true, children: [] },
-    ],
-  },
-  {
-    id: "entretenimiento",
-    title: "Entretenimiento",
-    completed: false,
-    children: [
-      { id: "auriculares", title: "Auriculares", completed: false, children: [] },
-      { id: "libro", title: "Libro", completed: false, children: [] },
-    ],
-  },
-  {
-    id: "viaje",
-    title: "Artículos para el día del viaje",
-    completed: false,
-    children: [
-      { id: "cargador-celular", title: "Cargador de celular", completed: false, children: [] },
-      {
-        id: "adaptador-enchufe",
-        title: "Adaptador de enchufe",
-        completed: true,
-        children: [],
-      },
-      { id: "mochila", title: "Mochila", completed: true, children: [] },
-      { id: "botella-agua", title: "Botella de agua", completed: true, children: [] },
-      {
-        id: "higiene",
-        title: "Neceser / Bolsito de Higiene Personal",
-        completed: false,
-        children: [
-          { id: "cepillo-dientes", title: "Cepillo de dientes", completed: true, children: [] },
-          { id: "desodorante", title: "Desodorante", completed: true, children: [] },
-          { id: "pasta-dental", title: "Pasta dental", completed: true, children: [] },
-          { id: "crema-manos", title: "Crema de manos", completed: true, children: [] },
-          { id: "shampoo", title: "Shampoo y acondicionador", completed: true, children: [] },
-          { id: "jabon", title: "Jabón", completed: true, children: [] },
-        ],
-      },
-    ],
-  },
-];
-
-function normalizeNode(node: ItemNode): ItemNode {
-  const children = node.children.map(normalizeNode);
-  if (children.length === 0) {
-    return { ...node, children };
+  if (!host) {
+    return "http://localhost:3000";
   }
 
-  const completed = children.every((child) => child.completed);
-  return { ...node, completed, children };
+  return `${protocol}://${host}`;
 }
 
-function normalizeTree(items: ItemNode[]): ItemNode[] {
-  return items.map(normalizeNode);
-}
-
-function setSubtreeCompletion(node: ItemNode, completed: boolean): ItemNode {
-  return {
-    ...node,
-    completed,
-    children: node.children.map((child) => setSubtreeCompletion(child, completed)),
-  };
-}
-
-function updateNodeRecursive(
-  node: ItemNode,
-  id: string,
-  updater: (node: ItemNode) => ItemNode
-): [ItemNode, boolean] {
-  if (node.id === id) {
-    return [updater(node), true];
+function getSingleParam(searchParams: SearchParams | undefined, key: string): string | undefined {
+  const value = searchParams?.[key];
+  if (Array.isArray(value)) {
+    return value[0];
   }
-
-  let childChanged = false;
-  const children = node.children.map((child) => {
-    const [updatedChild, changed] = updateNodeRecursive(child, id, updater);
-    if (changed) {
-      childChanged = true;
-    }
-    return updatedChild;
-  });
-
-  if (!childChanged) {
-    return [node, false];
-  }
-
-  return [{ ...node, children }, true];
+  return value;
 }
 
-function updateNodeInTree(
-  items: ItemNode[],
-  id: string,
-  updater: (node: ItemNode) => ItemNode
-): ItemNode[] {
-  let changed = false;
-  const updated = items.map((item) => {
-    const [nextItem, itemChanged] = updateNodeRecursive(item, id, updater);
-    if (itemChanged) {
-      changed = true;
-    }
-    return nextItem;
-  });
-  return changed ? updated : items;
-}
-
-function findNode(items: ItemNode[], id: string): ItemNode | undefined {
-  for (const item of items) {
-    if (item.id === id) {
-      return item;
-    }
-    const foundInChildren = findNode(item.children, id);
-    if (foundInChildren) {
-      return foundInChildren;
-    }
-  }
-  return undefined;
-}
-
-function buildVisibleNode(node: ItemNode, mode: TreeMode): VisibleNode | null {
-  const children = node.children
-    .map((child) => buildVisibleNode(child, mode))
-    .filter((child): child is VisibleNode => child !== null);
-
-  if (mode === "pending") {
-    if (node.completed && children.length === 0) {
-      return null;
-    }
-    return {
-      id: node.id,
-      title: node.title,
-      completed: node.completed,
-      children,
-      isContextOnly: node.completed,
-    };
-  }
-
-  if (!node.completed && children.length === 0) {
+function resolveActionError(errorParam?: string): { title: string; description: string } | null {
+  if (!errorParam) {
     return null;
   }
 
+  if (errorParam === "accion") {
+    return {
+      title: "No pudimos actualizar el estado.",
+      description: "Reintentá la acción o recargá la página para sincronizar los datos.",
+    };
+  }
+
   return {
-    id: node.id,
-    title: node.title,
-    completed: node.completed,
-    children,
-    isContextOnly: !node.completed,
+    title: "Ocurrió un error inesperado.",
+    description: "Volvé a intentarlo en unos segundos.",
   };
 }
 
-function buildVisibleTree(items: ItemNode[], mode: TreeMode): VisibleNode[] {
-  return items
-    .map((item) => buildVisibleNode(item, mode))
-    .filter((item): item is VisibleNode => item !== null);
-}
+async function fetchLists(): Promise<FetchResult> {
+  const baseUrl = await getBaseUrl();
 
-function countByStatus(items: ItemNode[], completed: boolean): number {
-  return items.reduce((total, item) => {
-    const own = item.completed === completed ? 1 : 0;
-    return total + own + countByStatus(item.children, completed);
-  }, 0);
-}
+  try {
+    const response = await fetch(`${baseUrl}/api/lists`, {
+      next: { tags: ["lists"] },
+    });
+    const data = (await response.json().catch(() => null)) as ListsResponse | ApiError | null;
 
-type TreeListProps = {
-  nodes: VisibleNode[];
-  mode: TreeMode;
-  onToggle: (id: string, nextCompleted: boolean) => void;
-  depth?: number;
-};
+    if (!response.ok) {
+      const apiError = data as ApiError | null;
+      return {
+        error: apiError?.error ?? "No se pudieron obtener las listas.",
+        details: apiError?.details ?? "Intentá recargar la página.",
+      };
+    }
 
-function TreeList({ nodes, mode, onToggle, depth = 0 }: TreeListProps) {
-  if (nodes.length === 0 && depth === 0) {
-    return (
-      <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-500">
-        No hay ítems para mostrar en esta vista.
-      </div>
-    );
+    return { items: (data as ListsResponse).items ?? [] };
+  } catch (error) {
+    return {
+      error: "No se pudieron obtener las listas.",
+      details: "Intentá recargar la página. Si el problema persiste, probá más tarde.",
+    };
   }
+}
 
+function PageShell({ children }: { children: ReactNode }) {
   return (
-    <ul className={depth === 0 ? "space-y-2" : "mt-2 space-y-2 border-l border-slate-200 pl-4"}>
-      {nodes.map((node) => {
-        const titleClasses = node.completed ? "text-slate-500 line-through" : "text-slate-900";
-
-        return (
-          <li key={node.id}>
-            <div
-              className={`flex items-start gap-3 rounded-lg px-2 py-1.5 transition ${
-                node.isContextOnly ? "bg-slate-100/80" : "bg-white shadow-sm"
-              }`}
-            >
-              {node.isContextOnly ? (
-                <span className="mt-1 h-4 w-4 rounded border border-slate-300 bg-white" aria-hidden />
-              ) : (
-                <input
-                  type="checkbox"
-                  className="mt-1 h-4 w-4 cursor-pointer rounded border-slate-300 accent-emerald-600"
-                  checked={node.completed}
-                  onChange={(event) => onToggle(node.id, event.target.checked)}
-                  aria-label={`Cambiar estado de ${node.title}`}
-                />
-              )}
-              <div>
-                <p className={`text-sm font-medium ${titleClasses}`}>{node.title}</p>
-                {mode === "completed" && node.isContextOnly ? (
-                  <p className="text-xs text-slate-500">Contexto de ruta (pendiente)</p>
-                ) : null}
-              </div>
-            </div>
-            {node.children.length > 0 ? (
-              <TreeList nodes={node.children} mode={mode} onToggle={onToggle} depth={depth + 1} />
-            ) : null}
-          </li>
-        );
-      })}
-    </ul>
+    <div className="min-h-screen bg-gradient-to-b from-slate-100 via-slate-50 to-white px-4 py-8">
+      <main className="mx-auto w-full max-w-6xl rounded-2xl border border-slate-200 bg-white/85 p-6 shadow-xl shadow-slate-200/70 backdrop-blur-sm sm:p-8">
+        {children}
+      </main>
+    </div>
   );
 }
 
-export default function Home() {
-  const [items, setItems] = useState<ItemNode[]>(() => normalizeTree(INITIAL_ITEMS));
-  const [pendingParentId, setPendingParentId] = useState<string | null>(null);
+function ErrorState({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="rounded-xl border border-rose-200 bg-rose-50/70 p-5 text-sm text-rose-900">
+      <h2 className="text-base font-semibold">{title}</h2>
+      <p className="mt-2 text-rose-700">{description}</p>
+      <Link
+        href="/"
+        className="mt-4 inline-flex items-center rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-xs font-semibold text-rose-700"
+      >
+        Reintentar
+      </Link>
+    </div>
+  );
+}
 
-  const pendingTree = useMemo(() => buildVisibleTree(items, "pending"), [items]);
-  const completedTree = useMemo(() => buildVisibleTree(items, "completed"), [items]);
-  const pendingCount = useMemo(() => countByStatus(items, false), [items]);
-  const completedCount = useMemo(() => countByStatus(items, true), [items]);
-  const parentForConfirmation = pendingParentId ? findNode(items, pendingParentId) : undefined;
+function EmptyState() {
+  return (
+    <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-500">
+      Todavía no hay listas para mostrar. Probá cargar datos o actualizá la página.
+    </div>
+  );
+}
 
-  const applyToggle = (id: string, nextCompleted: boolean) => {
-    setItems((previousItems) => {
-      const updated = updateNodeInTree(previousItems, id, (node) => {
-        if (node.children.length > 0) {
-          return setSubtreeCompletion(node, nextCompleted);
-        }
-        return { ...node, completed: nextCompleted };
-      });
+export default async function Home({ searchParams }: PageProps) {
+  const resolvedSearchParams = await Promise.resolve(searchParams);
+  const result = await fetchLists();
+  const errorParam = getSingleParam(resolvedSearchParams, "error");
+  const actionError = resolveActionError(errorParam);
 
-      return normalizeTree(updated);
-    });
-  };
+  if ("error" in result) {
+    return (
+      <PageShell>
+        <ErrorState title={result.error} description={result.details ?? "Intentá nuevamente."} />
+      </PageShell>
+    );
+  }
 
-  const handleToggle = (id: string, nextCompleted: boolean) => {
-    const currentNode = findNode(items, id);
-    if (!currentNode) {
-      return;
-    }
+  const items = result.items;
+  const confirmId = getSingleParam(resolvedSearchParams, "confirm");
+  const nodeForConfirmation = confirmId ? findNode(items, confirmId) : undefined;
+  const confirmationMissing = Boolean(confirmId && !nodeForConfirmation);
 
-    if (nextCompleted && currentNode.children.length > 0 && !currentNode.completed) {
-      setPendingParentId(id);
-      return;
-    }
+  if (items.length === 0) {
+    return (
+      <PageShell>
+        <header className="mb-8">
+          <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Lista de viaje</h1>
+          <p className="mt-2 text-sm text-slate-600">
+            Sistema jerárquico con completado automático de padres y confirmación solo en completado
+            manual.
+          </p>
+        </header>
+        <EmptyState />
+      </PageShell>
+    );
+  }
 
-    applyToggle(id, nextCompleted);
-  };
-
-  const confirmParentCompletion = () => {
-    if (!pendingParentId) {
-      return;
-    }
-    applyToggle(pendingParentId, true);
-    setPendingParentId(null);
-  };
+  const pendingTree = buildVisibleTree(items, "pending");
+  const completedTree = buildVisibleTree(items, "completed");
+  const pendingCount = countByStatus(items, false);
+  const completedCount = countByStatus(items, true);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-100 via-slate-50 to-white px-4 py-8">
@@ -318,42 +169,56 @@ export default function Home() {
           </div>
         </header>
 
+        {actionError ? (
+          <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50/70 p-4 text-sm text-rose-900">
+            <h2 className="text-base font-semibold">{actionError.title}</h2>
+            <p className="mt-1 text-rose-700">{actionError.description}</p>
+          </div>
+        ) : null}
+
+        {confirmationMissing ? (
+          <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50/70 p-4 text-sm text-amber-900">
+            No encontramos el ítem que querías confirmar. Probá actualizar la página.
+          </div>
+        ) : null}
+
         <div className="grid gap-6 lg:grid-cols-2">
           <section className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
             <h2 className="mb-4 text-lg font-semibold text-slate-900">Pendientes</h2>
-            <TreeList nodes={pendingTree} mode="pending" onToggle={handleToggle} />
+            <TreeList nodes={pendingTree} mode="pending" />
           </section>
 
           <section className="rounded-xl border border-slate-200 bg-emerald-50/60 p-4">
             <h2 className="mb-4 text-lg font-semibold text-slate-900">Completados</h2>
-            <TreeList nodes={completedTree} mode="completed" onToggle={handleToggle} />
+            <TreeList nodes={completedTree} mode="completed" />
           </section>
         </div>
       </main>
 
-      {pendingParentId && parentForConfirmation ? (
+      {confirmId && nodeForConfirmation ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
             <h3 className="text-lg font-semibold text-slate-900">Completar ítem padre</h3>
             <p className="mt-3 text-sm text-slate-600">
-              Vas a completar <strong>{parentForConfirmation.title}</strong> y todos sus descendientes.
+              Vas a completar <strong>{nodeForConfirmation.title}</strong> y todos sus descendientes.
               ¿Querés continuar?
             </p>
             <div className="mt-6 flex justify-end gap-3">
-              <button
-                type="button"
+              <Link
+                href="/"
                 className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
-                onClick={() => setPendingParentId(null)}
               >
                 Cancelar
-              </button>
-              <button
-                type="button"
-                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
-                onClick={confirmParentCompletion}
-              >
-                Confirmar y completar todo
-              </button>
+              </Link>
+              <form action={confirmParentAction}>
+                <input type="hidden" name="id" value={nodeForConfirmation.id} />
+                <button
+                  type="submit"
+                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+                >
+                  Confirmar y completar todo
+                </button>
+              </form>
             </div>
           </div>
         </div>
