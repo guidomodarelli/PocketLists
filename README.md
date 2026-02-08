@@ -34,6 +34,7 @@ Listas simples y rápidas para la vida real. Crea y gestiona listas de compras, 
 - Página SSR con UI de resultados y estados controlados.
 - Componentes con estilos modulares y diseño responsivo.
 - Pruebas y checks de calidad integrados.
+
 ### Patrones de código
 
 - Nomenclatura semántica: nombres descriptivos para variables, funciones, componentes y archivos.
