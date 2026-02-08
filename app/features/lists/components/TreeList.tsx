@@ -1,4 +1,5 @@
 import { toggleItemAction } from "../actions";
+import Link from "./Link";
 import type { TreeMode, VisibleNode } from "../types";
 
 type TreeListProps = {
@@ -21,6 +22,8 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
       {nodes.map((node) => {
         const titleClasses = node.completed ? "text-slate-500 line-through" : "text-slate-900";
         const nextCompletedValue = node.completed ? "false" : "true";
+        const requiereConfirmacion = node.children.length > 0 && !node.completed;
+        const enlaceConfirmacion = `/?confirm=${encodeURIComponent(node.id)}`;
 
         return (
           <li key={node.id}>
@@ -31,6 +34,16 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
             >
               {node.isContextOnly ? (
                 <span className="mt-1 h-4 w-4 rounded border border-slate-300 bg-white" aria-hidden />
+              ) : requiereConfirmacion ? (
+                <Link
+                  href={enlaceConfirmacion}
+                  role="checkbox"
+                  aria-checked={node.completed}
+                  aria-label={`Cambiar estado de ${node.title}`}
+                  className="mt-1 flex h-4 w-4 items-center justify-center rounded border border-slate-300 bg-white transition"
+                >
+                  <span aria-hidden className="h-2 w-2 rounded-sm bg-transparent" />
+                </Link>
               ) : (
                 <form action={toggleItemAction}>
                   <input type="hidden" name="id" value={node.id} />

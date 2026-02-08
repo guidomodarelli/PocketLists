@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
-import Link from "next/link";
 import { headers } from "next/headers";
 import TreeList from "@/app/features/lists/components/TreeList";
+import Link from "@/app/features/lists/components/Link";
 import type { ApiError, ItemNode, ListsResponse } from "@/app/features/lists/types";
 import { buildVisibleTree, countByStatus, findNode } from "@/app/features/lists/tree";
 import { confirmParentAction, resetCompletedAction } from "@/app/features/lists/actions";
@@ -205,7 +205,6 @@ export default async function Home({ searchParams }: PageProps) {
               {canResetCompleted ? (
                 <Link
                   href="/?confirmReset=true"
-                  scroll={false}
                   className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100"
                 >
                   Desmarcar completados
@@ -227,7 +226,6 @@ export default async function Home({ searchParams }: PageProps) {
             <div className="mt-6 flex justify-end gap-3">
               <Link
                 href="/"
-                scroll={false}
                 className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
               >
                 Cancelar
