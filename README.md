@@ -1,19 +1,19 @@
 # PocketLists
 
-## Descripcion general
+## Descripción general
 
 Listas simples y rápidas para la vida real. Crea y gestiona listas de compras, checklists de viaje y notas rápidas — todo sincronizado de forma fluida.
 
 ## Alcance y objetivos
 
-- Resolver un flujo completo SSR + API para listas (server + client).
-- Integrar validacion, mocks de servicios externos y contratos de datos estables.
-- Mantener modularidad (servicios, hooks, componentes) y estandares estandarizados.
+- Resolver un flujo completo SSR + API para listas (servidor + cliente).
+- Integrar validación, mocks de servicios externos y contratos de datos estables.
+- Mantener modularidad (servicios, hooks, componentes) y estándares consistentes.
 
-## UI states
+## Estados de la UI
 
-- Loading: muestra un indicador de estado de carga con la etiqueta "Cargando listas..." mientras se obtienen los datos del cliente.
-- Empty: muestra un mensaje informativo cuando la lista de listas está vacía.
+- Carga: muestra un indicador de estado de carga con la etiqueta "Cargando listas..." mientras se obtienen los datos del cliente.
+- Vacío: muestra un mensaje informativo cuando la lista de listas está vacía.
 - Error: muestra un mensaje seguro y orientado a la acción cuando falla la obtención de datos SSR o del cliente, incluyendo errores de validación para parámetros de consulta inválidos.
 
 ## Plan
@@ -21,119 +21,119 @@ Listas simples y rápidas para la vida real. Crea y gestiona listas de compras, 
 ### Enfoque de alto nivel
 
 - **Descubrimiento y contrato**: alinear el alcance del endpoint y la forma del dato para que server y UI trabajen con un contrato estable.
-- **Backend server-only**: resolver la integracion mediante servicios y mocks, con validaciones centrales y observabilidad segura.
-- **SSR + cliente**: entregar SSR estable y permitir refresco de datos en cliente sin duplicar requests.
-- **UI accesible**: construir la vista con estados claros y priorizando semantica y accesibilidad.
-- **Diseño responsive**: aplicar estilos modulares con enfoque mobile-first.
-- **Calidad y tests**: cubrir con tests unitarios y asegurar calidad por linting, accesibilidad y reportes.
+- **Backend solo servidor**: resolver la integración mediante servicios y mocks, con validaciones centrales y observabilidad segura.
+- **SSR + cliente**: entregar SSR estable y permitir refresco de datos en cliente sin duplicar solicitudes.
+- **Interfaz accesible**: construir la vista con estados claros y priorizando semántica y accesibilidad.
+- **Diseño responsivo**: aplicar estilos modulares con enfoque mobile-first.
+- **Calidad y pruebas**: cubrir con pruebas unitarias y asegurar calidad por linting, accesibilidad y reportes.
 
 ### Entregables
 
 - Endpoint de listas listo para SSR y consumo cliente.
-- Servicio de listas con mocks y normalizacion consistente.
-- Pagina SSR con UI de resultados y estados controlados.
-- Componentes con estilos modulares y diseño responsive.
-- Tests y checks de calidad integrados.
-### Patrones de codigo
+- Servicio de listas con mocks y normalización consistente.
+- Página SSR con UI de resultados y estados controlados.
+- Componentes con estilos modulares y diseño responsivo.
+- Pruebas y checks de calidad integrados.
+### Patrones de código
 
-- Nomenclatura semantica: nombres descriptivos para variables, funciones, componentes y archivos.
-- Early returns: manejar casos invalidos al inicio y evitar anidamientos profundos.
-- Manejo de errores centralizado: concentrar la logica en handlers/servicios y devolver respuestas consistentes.
+- Nomenclatura semántica: nombres descriptivos para variables, funciones, componentes y archivos.
+- Retornos tempranos: manejar casos inválidos al inicio y evitar anidamientos profundos.
+- Manejo de errores centralizado: concentrar la lógica en handlers/servicios y devolver respuestas consistentes.
 
-### Politicas de CI y calidad
+### Políticas de CI y calidad
 
 - El merge se bloquea si fallan lint (`npm run lint`), tests (`npm run test`) o build (`npm run build`).
 - Todo cambio debe traer tests cuando aplique (ver `tests/`) y pasar localmente antes del PR.
-- La calidad se asegura con los checks anteriores y el seguimiento de las guias de contribucion.
+- La calidad se asegura con los checks anteriores y el seguimiento de las guías de contribución.
 
-### Convencion de commits y branching (opcional)
+### Convención de commits y ramas (opcional)
 
-- Branches con prefijos `feature/` y `fix/`, en minusculas y con guiones (ver la seccion "Guia de codificacion").
-- Commits siguiendo las 7 reglas de commit messages (ver la seccion "Guia de codificacion").
+- Ramas con prefijos `feature/` y `fix/`, en minúsculas y con guiones (ver la sección "Guía de codificación").
+- Commits siguiendo las 7 reglas de mensajes de commit (ver la sección "Guía de codificación").
 
-## Documentacion arquitectonica y decisiones (ADR)
+## Documentación arquitectónica y decisiones (ADR)
 
 - Registrar decisiones importantes bajo `docs/` con ADRs numerados (ej: `ADR-001`, `ADR-002`).
-- Cada ADR debe incluir contexto, decision, alternativas consideradas y consecuencias.
-- Usar ADRs para definir estandares de cambios futuros y asegurar trazabilidad.
+- Cada ADR debe incluir contexto, decisión, alternativas consideradas y consecuencias.
+- Usar ADRs para definir estándares de cambios futuros y asegurar trazabilidad.
 
 ## Seguridad y manejo de datos sensibles
 
-- Los secretos se gestionan con el gestor de secretos de la organizacion y nunca se versionan en el repositorio.
-- No se deben almacenar ni loguear datos sensibles: informacion personal, tokens, credenciales, cookies o payloads con PII.
+- Los secretos se gestionan con el gestor de secretos de la organización y nunca se versionan en el repositorio.
+- No se deben almacenar ni loguear datos sensibles: información personal, tokens, credenciales, cookies o payloads con PII.
 
 ## Pruebas y cobertura
 
-- Estrategia: unitarias (componentes, utils, servicios), integracion (API + servicios con mocks) y E2E (flujos completos con WebdriverIO).
-- Cobertura minima: 80% en statements, branches, functions y lines, reportada por Jest en `coverage/`.
-- Scripts: `npm run test:unit`, `npm run test:e2e`, `npm run test:a11y`, `npm run test` (todos), `npm run lint` y `npm run build` para validaciones automaticas.
+- Estrategia: unitarias (componentes, utils, servicios), integración (API + servicios con mocks) y E2E (flujos completos con WebdriverIO).
+- Cobertura mínima: 80% en statements, branches, functions y lines, reportada por Jest en `coverage/`.
+- Scripts: `npm run test:unit`, `npm run test:e2e`, `npm run test:a11y`, `npm run test` (todos), `npm run lint` y `npm run build` para validaciones automáticas.
 - Accesibilidad: `npm run test:a11y` ejecuta axe-core sobre vistas clave para cumplir WCAG.
 - Visual: snapshots en tests unitarios para detectar regresiones de UI.
 
 ## Anexos y utilitarios
 
-- Plantillas: ADR, changelog y release notes con estructura minima para mantener trazabilidad.
-- Scripts automatizados (pseudocodigo): smoke tests y verificacion de despliegue.
+- Plantillas: ADR, changelog y release notes con estructura mínima para mantener trazabilidad.
+- Scripts automatizados (pseudocódigo): smoke tests y verificación de despliegue.
 - Uso recomendado:
-  - Antes de merge: completar ADR si hay decision relevante y actualizar CHANGELOG si aplica.
+  - Antes de merge: completar ADR si hay decisión relevante y actualizar CHANGELOG si aplica.
   - Antes de release: generar RELEASE_NOTES desde CHANGELOG.
-  - Post-deploy: ejecutar smoke tests y verificacion de despliegue.
+- Post-despliegue: ejecutar smoke tests y verificación de despliegue.
 
-Plantilla ADR (minima):
+Plantilla ADR (mínima):
 
 ```
-ADR-XXX: Titulo
+ADR-XXX: Título
 Fecha: YYYY-MM-DD
 Estado: Propuesto | Aceptado | Rechazado | Reemplazado
 
 Contexto:
-- Que problema se resuelve y por que ahora.
+- Qué problema se resuelve y por qué ahora.
 
-Decision:
-- Que se decide y alcance.
+Decisión:
+- Qué se decide y alcance.
 
 Alternativas:
-- Opciones evaluadas y por que se descartan.
+- Opciones evaluadas y por qué se descartan.
 
 Consecuencias:
-- Impacto tecnico y operativo.
+- Impacto técnico y operativo.
 ```
 
-Plantilla CHANGELOG (minima):
+Plantilla CHANGELOG (mínima):
 
 ```
-## [Unreleased]
-- Added:
-- Changed:
-- Fixed:
+## [Sin publicar]
+- Agregado:
+- Cambiado:
+- Corregido:
 
 ## [X.Y.Z] - YYYY-MM-DD
-- Added:
-- Changed:
-- Fixed:
+- Agregado:
+- Cambiado:
+- Corregido:
 ```
 
-Plantilla RELEASE_NOTES (minima):
+Plantilla RELEASE_NOTES (mínima):
 
 ```
-# Release X.Y.Z - YYYY-MM-DD
+# Lanzamiento X.Y.Z - YYYY-MM-DD
 
-Highlights:
+Destacados:
 - Cambio principal.
 
-Changes:
-- Added:
-- Changed:
-- Fixed:
+Cambios:
+- Agregado:
+- Cambiado:
+- Corregido:
 
-Known issues:
+Problemas conocidos:
 - Lista corta si aplica.
 
-Rollback:
+Reversión:
 - Pasos resumidos o referencia al runbook.
 ```
 
-Scripts en pseudocodigo
+Scripts en pseudocódigo
 
 ```
 smoke_test:
@@ -148,9 +148,9 @@ deploy_verification:
   assert feature_flags == expected_state
 ```
 
-## Getting Started
+## Primeros pasos
 
-First, run the development server:
+Primero, ejecuta el servidor de desarrollo:
 
 ```bash
 npm run dev
@@ -162,23 +162,23 @@ pnpm dev
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abre [http://localhost:3000](http://localhost:3000) en tu navegador para ver el resultado.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Puedes empezar a editar la página modificando `app/page.tsx`. La página se actualiza automáticamente a medida que editas el archivo.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Este proyecto usa [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) para optimizar y cargar automáticamente [Geist](https://vercel.com/font), una nueva familia tipográfica de Vercel.
 
-## Learn More
+## Más información
 
-To learn more about Next.js, take a look at the following resources:
+Para saber más sobre Next.js, revisa los siguientes recursos:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- [Documentación de Next.js](https://nextjs.org/docs) - conoce las funciones y la API de Next.js.
+- [Aprende Next.js](https://nextjs.org/learn) - un tutorial interactivo de Next.js.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Puedes visitar [el repositorio de Next.js en GitHub](https://github.com/vercel/next.js) - ¡tus comentarios y contribuciones son bienvenidos!
 
-## Deploy on Vercel
+## Despliegue en Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+La forma más sencilla de desplegar tu aplicación de Next.js es usar la [plataforma de Vercel](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) de los creadores de Next.js.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Consulta nuestra [documentación de despliegue de Next.js](https://nextjs.org/docs/app/building-your-application/deploying) para más detalles.
