@@ -2,7 +2,7 @@
 
 import { revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
-import { completeParent, getNodeById, toggleItem } from "./services";
+import { completeParent, getNodeById, resetCompletedItems, toggleItem } from "./services";
 
 function readRequiredString(formData: FormData, key: string): string {
   const value = formData.get(key);
@@ -47,6 +47,12 @@ export async function confirmParentAction(formData: FormData): Promise<void> {
   }
 
   completeParent(id);
+  revalidateTag("lists", "max");
+  redirect("/");
+}
+
+export async function resetCompletedAction(): Promise<void> {
+  resetCompletedItems();
   revalidateTag("lists", "max");
   redirect("/");
 }

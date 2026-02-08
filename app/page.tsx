@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import TreeList from "@/app/features/lists/components/TreeList";
 import type { ApiError, ItemNode, ListsResponse } from "@/app/features/lists/types";
 import { buildVisibleTree, countByStatus, findNode } from "@/app/features/lists/tree";
-import { confirmParentAction } from "@/app/features/lists/actions";
+import { confirmParentAction, resetCompletedAction } from "@/app/features/lists/actions";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -129,6 +129,8 @@ export default async function Home({ searchParams }: PageProps) {
   const confirmId = getSingleParam(resolvedSearchParams, "confirm");
   const nodeForConfirmation = confirmId ? findNode(items, confirmId) : undefined;
   const confirmationMissing = Boolean(confirmId && !nodeForConfirmation);
+  const confirmReset = getSingleParam(resolvedSearchParams, "confirmReset");
+  const shouldConfirmReset = confirmReset === "true";
 
   if (items.length === 0) {
     return (
@@ -149,6 +151,9 @@ export default async function Home({ searchParams }: PageProps) {
   const completedTree = buildVisibleTree(items, "completed");
   const pendingCount = countByStatus(items, false);
   const completedCount = countByStatus(items, true);
+  const canResetCompleted = completedCount > 0;
+  const resetConfirmationUnavailable = shouldConfirmReset && !canResetCompleted;
+  const showResetModal = shouldConfirmReset && canResetCompleted && !confirmId;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-100 via-slate-50 to-white px-4 py-8">
@@ -182,6 +187,12 @@ export default async function Home({ searchParams }: PageProps) {
           </div>
         ) : null}
 
+        {resetConfirmationUnavailable ? (
+          <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50/70 p-4 text-sm text-amber-900">
+            No hay ítems completados para desmarcar. Probá actualizar la página.
+          </div>
+        ) : null}
+
         <div className="grid gap-6 lg:grid-cols-2">
           <section className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
             <h2 className="mb-4 text-lg font-semibold text-slate-900">Pendientes</h2>
@@ -189,11 +200,50 @@ export default async function Home({ searchParams }: PageProps) {
           </section>
 
           <section className="rounded-xl border border-slate-200 bg-emerald-50/60 p-4">
-            <h2 className="mb-4 text-lg font-semibold text-slate-900">Completados</h2>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold text-slate-900">Completados</h2>
+              {canResetCompleted ? (
+                <Link
+                  href="/?confirmReset=true"
+                  scroll={false}
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                >
+                  Desmarcar completados
+                </Link>
+              ) : null}
+            </div>
             <TreeList nodes={completedTree} mode="completed" />
           </section>
         </div>
       </main>
+
+      {showResetModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <h3 className="text-lg font-semibold text-slate-900">Desmarcar completados</h3>
+            <p className="mt-3 text-sm text-slate-600">
+              Vas a desmarcar todos los ítems completados. ¿Querés continuar?
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <Link
+                href="/"
+                scroll={false}
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              >
+                Cancelar
+              </Link>
+              <form action={resetCompletedAction}>
+                <button
+                  type="submit"
+                  className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-950"
+                >
+                  Confirmar y desmarcar
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {confirmId && nodeForConfirmation ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4">

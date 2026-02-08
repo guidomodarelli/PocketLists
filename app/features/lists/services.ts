@@ -55,3 +55,10 @@ export function completeParent(id: string): ItemNode[] {
   writeStore(normalized);
   return normalized;
 }
+
+export function resetCompletedItems(): ItemNode[] {
+  const updated = getStoreItems().map((item) => setSubtreeCompletion(item, false));
+  const normalized = normalizeTree(updated);
+  writeStore(normalized);
+  return normalized;
+}
