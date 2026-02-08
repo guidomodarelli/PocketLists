@@ -13,6 +13,76 @@
 - Never commit secrets. Keep local values in `.env.local` (all `.env*` files are gitignored).
 - Review dependency and config changes carefully, especially in `next.config.ts` and auth/runtime-related code.
 
+## 📁 Estructura típica
+
+```txt
+.
+├── app/                        # App Router (core del routing)
+│   ├── layout.tsx              # Layout raíz (html, body, providers)
+│   ├── page.tsx                # Página principal (/)
+│   ├── loading.tsx             # UI de loading para la ruta
+│   ├── error.tsx               # Error boundary de la ruta
+│   ├── not-found.tsx           # 404
+│   │
+│   ├── api/                    # Route Handlers (API)
+│   │   └── users/
+│   │       └── route.ts        # GET, POST, etc.
+│   │
+│   ├── (auth)/                 # Route Group (no afecta la URL)
+│   │   ├── login/
+│   │   │   └── page.tsx
+│   │   └── register/
+│   │       └── page.tsx
+│   │
+│   ├── components/             # Componentes reutilizables (UI)
+│   │   ├── ui/                 # Componentes presentacionales
+│   │   └── shared/             # Componentes con lógica compartida
+│   │
+│   ├── features/               # Features / módulos de dominio
+│   │   ├── users/
+│   │   │   ├── components/
+│   │   │   ├── hooks/
+│   │   │   └── services.ts
+│   │   └── billing/
+│   │
+│   └── lib/                    # Utilidades, helpers, clientes
+│       ├── db.ts               # Cliente DB
+│       ├── auth.ts             # Auth helpers
+│       └── fetcher.ts
+│
+├── hooks/                      # Custom React hooks globales
+│
+├── public/                     # Assets estáticos
+│   ├── images/
+│   └── fonts/
+│
+├── next.config.js              # Configuración Next.js
+├── tsconfig.json
+├── package.json
+├── AGENTS.md                   # Reglas / convenciones del repo
+└── README.md
+```
+
+---
+
+## 🧠 Notas clave
+
+* **Layouts son jerárquicos**: cada carpeta puede tener su propio `layout.tsx`.
+* **Route Groups `(…)`** organizan sin afectar la URL.
+* **Server Components por defecto** (usar `"use client"` solo cuando hace falta).
+
+---
+
+## 🧩 Variante ultra-estricta
+
+Podés agregar al final de `AGENTS.md` algo como:
+
+- El routing vive exclusivamente en `app/`
+- No se permite lógica de dominio en `components/ui`
+- Los Server Components son el default
+- `"use client"` debe justificarse
+- Las APIs usan `app/api/**/route.ts`
+
 ## Alcance y objetivos
 
 - Resolver un flujo completo SSR + API para listas (servidor + cliente).
