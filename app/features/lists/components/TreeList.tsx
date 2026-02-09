@@ -24,6 +24,7 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
         const nextCompletedValue = node.completed ? "false" : "true";
         const requiereConfirmacion = node.children.length > 0 && !node.completed;
         const enlaceConfirmacion = `/?confirm=${encodeURIComponent(node.id)}`;
+        const enlaceAgregarHijo = `/?addChild=${encodeURIComponent(node.id)}`;
 
         return (
           <li key={node.id}>
@@ -68,11 +69,20 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
                   </button>
                 </form>
               )}
-              <div>
-                <p className={`text-sm font-medium ${titleClasses}`}>{node.title}</p>
-                {mode === "completed" && node.isContextOnly ? (
-                  <p className="text-xs text-slate-500">Contexto de ruta (pendiente)</p>
-                ) : null}
+              <div className="flex items-center gap-2 justify-between w-full">
+                <div className="flex-1">
+                  <p className={`text-sm font-medium ${titleClasses}`}>{node.title}</p>
+                  {mode === "completed" && node.isContextOnly ? (
+                    <p className="text-xs text-slate-500">Contexto de ruta (pendiente)</p>
+                  ) : null}
+                </div>
+                <Link
+                  href={enlaceAgregarHijo}
+                  aria-label={`Agregar hijo a ${node.title}`}
+                  className="ml-auto inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
+                >
+                  +
+                </Link>
               </div>
             </div>
             {node.children.length > 0 ? (

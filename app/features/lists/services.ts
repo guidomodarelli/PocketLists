@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { INITIAL_ITEMS } from "./data";
 import type { ItemNode } from "./types";
 import { findNode, normalizeTree, setSubtreeCompletion, updateNodeInTree } from "./tree";
@@ -58,6 +59,36 @@ export function completeParent(id: string): ItemNode[] {
 
 export function resetCompletedItems(): ItemNode[] {
   const updated = getStoreItems().map((item) => setSubtreeCompletion(item, false));
+  const normalized = normalizeTree(updated);
+  writeStore(normalized);
+  return normalized;
+}
+
+export function crearItem(title: string, parentId?: string): ItemNode[] | null {
+  const nuevoItem: ItemNode = {
+    id: `item-${randomUUID()}`,
+    title,
+    completed: false,
+    children: [],
+  };
+
+  const items = getStoreItems();
+
+  if (!parentId) {
+    const normalized = normalizeTree([...items, nuevoItem]);
+    writeStore(normalized);
+    return normalized;
+  }
+
+  const updated = updateNodeInTree(items, parentId, (node) => ({
+    ...node,
+    children: [...node.children, nuevoItem],
+  }));
+
+  if (updated === items) {
+    return null;
+  }
+
   const normalized = normalizeTree(updated);
   writeStore(normalized);
   return normalized;

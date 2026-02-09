@@ -23,3 +23,8 @@ export type ApiError = {
   error: string;
   details?: string;
 };
+
+export type OpcionPadre = {
+  id: string;
+  etiqueta: string;
+};

@@ -1,4 +1,4 @@
-import type { ItemNode, TreeMode, VisibleNode } from "./types";
+import type { ItemNode, OpcionPadre, TreeMode, VisibleNode } from "./types";
 
 export function normalizeNode(node: ItemNode): ItemNode {
   const children = node.children.map(normalizeNode);
@@ -118,4 +118,17 @@ export function countByStatus(items: ItemNode[], completed: boolean): number {
     const own = item.completed === completed ? 1 : 0;
     return total + own + countByStatus(item.children, completed);
   }, 0);
+}
+
+export function construirOpcionesPadre(items: ItemNode[]): OpcionPadre[] {
+  const opciones: OpcionPadre[] = [];
+
+  const recorrer = (node: ItemNode, ruta: string[]) => {
+    const etiqueta = [...ruta, node.title].join(" / ");
+    opciones.push({ id: node.id, etiqueta });
+    node.children.forEach((child) => recorrer(child, [...ruta, node.title]));
+  };
+
+  items.forEach((item) => recorrer(item, []));
+  return opciones;
 }

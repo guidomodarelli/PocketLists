@@ -2,7 +2,7 @@
 
 import { revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
-import { completeParent, getNodeById, resetCompletedItems, toggleItem } from "./services";
+import { completeParent, crearItem, getNodeById, resetCompletedItems, toggleItem } from "./services";
 
 function readRequiredString(formData: FormData, key: string): string {
   const value = formData.get(key);
@@ -18,6 +18,18 @@ function readRequiredBoolean(formData: FormData, key: string): boolean {
     throw new Error(`Valor inválido para "${key}".`);
   }
   return value === "true";
+}
+
+function readOptionalString(formData: FormData, key: string): string | undefined {
+  const value = formData.get(key);
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+  if (typeof value !== "string") {
+    throw new Error(`Valor inválido para "${key}".`);
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
 }
 
 export async function toggleItemAction(formData: FormData): Promise<void> {
@@ -53,6 +65,23 @@ export async function confirmParentAction(formData: FormData): Promise<void> {
 
 export async function resetCompletedAction(): Promise<void> {
   resetCompletedItems();
+  revalidateTag("lists", "max");
+  redirect("/");
+}
+
+export async function crearItemAction(formData: FormData): Promise<void> {
+  const title = readRequiredString(formData, "title");
+  const parentId = readOptionalString(formData, "parentId");
+
+  if (parentId && !getNodeById(parentId)) {
+    redirect("/?error=agregar");
+  }
+
+  const result = crearItem(title, parentId);
+  if (!result) {
+    redirect("/?error=agregar");
+  }
+
   revalidateTag("lists", "max");
   redirect("/");
 }
