@@ -20,6 +20,12 @@
   - Ejemplo: `Componente/Componente.tsx` + `Componente/Componente.module.scss`.
 - **Excepción para archivos reservados de Next.js**: `page.tsx`, `layout.tsx`, `loading.tsx` y `error.tsx` mantienen su convención de nombre reservada, pero igual deben tener su archivo asociado (`page.module.scss`, `layout.module.scss`, etc.).
 - **BEM mandatorio en SCSS**: todas las clases declaradas en `*.module.scss` deben seguir BEM (`bloque`, `bloque__elemento`, `bloque--modificador`, `bloque__elemento--modificador`).
+- **shadcn/ui obligatorio como primera opción**:
+  - Antes de crear UI nueva, usar primero componentes existentes de `shadcn/ui`.
+  - Si el componente exacto no existe pero uno existente se puede ajustar con cambios leves, modificar ese componente priorizando valores por defecto y manteniendo compatibilidad.
+  - Crear un componente nuevo solo como última opción, cuando no exista alternativa reutilizable.
+  - Los componentes de `shadcn/ui` se agregan siempre usando CLI (`npx shadcn@latest add <component>`), no copiando código manualmente.
+  - Los componentes generados por `shadcn/ui` en `components/ui/**` quedan exceptuados de la regla de SCSS Module + BEM; se estilizan con sus variantes/utilidades Tailwind y `cn`.
 
 ## Security & Configuration Tips
 - Never commit secrets. Keep local values in `.env.local` (all `.env*` files are gitignored).
