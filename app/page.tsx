@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { headers } from "next/headers";
 import TreeList from "@/app/features/lists/components/TreeList/TreeList";
 import Link from "@/app/features/lists/components/Link/Link";
-import ParentSelector from "@/app/features/lists/components/ParentSelector/ParentSelector";
+import AddItemModal from "@/app/features/lists/components/AddItemModal/AddItemModal";
 import type { ApiError, ItemNode, ListsResponse } from "@/app/features/lists/types";
 import { buildVisibleTree, buildParentOptions, countByStatus, findNode } from "@/app/features/lists/tree";
 import {
@@ -165,38 +165,7 @@ export default async function Home({ searchParams }: PageProps) {
             Sistema jerárquico con completado automático de padres y confirmación solo en completado
             manual.
           </p>
-          <Card className={styles["home-page__form-card"]}>
-            <h2 className={styles["home-page__section-title"]}>Agregar ítem</h2>
-            <form action={createItemAction} className={styles["home-page__add-form"]}>
-              <div className={styles["home-page__field"]}>
-                <label className={styles["home-page__label"]} htmlFor="new-item-title-empty">
-                  Título del ítem
-                </label>
-                <input
-                  id="new-item-title-empty"
-                  name="title"
-                  required
-                  placeholder="Ej: Linterna"
-                  className={styles["home-page__input"]}
-                />
-              </div>
-              <ParentSelector
-                options={parentOptions}
-                name="parentId"
-                label="Agregar como hijo de"
-                placeholder="Buscá un ítem existente"
-                helpText="Opcional. Si no elegís padre, se agrega como raíz."
-              />
-              <div className={styles["home-page__form-actions"]}>
-                <Button
-                  type="submit"
-                  className={styles["home-page__submit-button"]}
-                >
-                  Agregar
-                </Button>
-              </div>
-            </form>
-          </Card>
+          <AddItemModal parentOptions={parentOptions} />
         </header>
         {actionError ? (
           <div className={cn(styles["home-page__banner"], styles["home-page__banner--error"])}>
@@ -254,38 +223,7 @@ export default async function Home({ searchParams }: PageProps) {
               Completados: {completedCount}
             </span>
           </div>
-          <Card className={styles["home-page__form-card"]}>
-            <h2 className={styles["home-page__section-title"]}>Agregar ítem</h2>
-            <form action={createItemAction} className={styles["home-page__add-form"]}>
-              <div className={styles["home-page__field"]}>
-                <label className={styles["home-page__label"]} htmlFor="new-item-title">
-                  Título del ítem
-                </label>
-                <input
-                  id="new-item-title"
-                  name="title"
-                  required
-                  placeholder="Ej: Linterna"
-                  className={styles["home-page__input"]}
-                />
-              </div>
-              <ParentSelector
-                options={parentOptions}
-                name="parentId"
-                label="Agregar como hijo de"
-                placeholder="Buscá un ítem existente"
-                helpText="Opcional. Si no elegís padre, se agrega como raíz."
-              />
-              <div className={styles["home-page__form-actions"]}>
-                <Button
-                  type="submit"
-                  className={styles["home-page__submit-button"]}
-                >
-                  Agregar
-                </Button>
-              </div>
-            </form>
-          </Card>
+          <AddItemModal parentOptions={parentOptions} />
         </header>
 
         {actionError ? (
