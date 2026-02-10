@@ -59,6 +59,32 @@ jest.mock("@/components/ui/dialog", () => ({
     asChild ? <>{children}</> : <button>{children}</button>,
 }));
 
+jest.mock("@/components/ui/dropdown-menu", () => ({
+  DropdownMenu: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DropdownMenuTrigger: ({ children }: { children: ReactNode }) => <>{children}</>,
+  DropdownMenuContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DropdownMenuItem: ({
+    children,
+    onSelect,
+    ...props
+  }: {
+    children: ReactNode;
+    onSelect?: (event: Event & { preventDefault: () => void }) => void;
+    [key: string]: unknown;
+  }) => (
+    <button
+      type="button"
+      {...props}
+      onClick={() =>
+        onSelect?.({
+          preventDefault: () => undefined,
+        } as Event & { preventDefault: () => void })}
+    >
+      {children}
+    </button>
+  ),
+}));
+
 function createNode(overrides: Partial<VisibleNode> = {}): VisibleNode {
   return {
     id: "node-1",
@@ -158,9 +184,10 @@ describe("TreeList", () => {
     const leaf = createNode({ id: "leaf-delete", title: "Hoja para borrar", children: [] });
 
     render(<TreeList nodes={[leaf]} mode="pending" />);
+    fireEvent.click(screen.getByLabelText("Abrir acciones de Hoja para borrar"));
     fireEvent.click(screen.getByLabelText("Eliminar Hoja para borrar"));
 
-    expect(screen.getByText("Eliminar ítem")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Eliminar ítem" })).toBeInTheDocument();
     expect(screen.getByText(/Se eliminará el ítem/)).toBeInTheDocument();
   });
 
@@ -172,9 +199,10 @@ describe("TreeList", () => {
     });
 
     render(<TreeList nodes={[parent]} mode="pending" />);
+    fireEvent.click(screen.getByLabelText("Abrir acciones de Parent para borrar"));
     fireEvent.click(screen.getByLabelText("Eliminar Parent para borrar"));
 
-    expect(screen.getByText("Eliminar ítem")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Eliminar ítem" })).toBeInTheDocument();
     expect(screen.getByText(/también se eliminarán todos sus descendientes/)).toBeInTheDocument();
   });
 });

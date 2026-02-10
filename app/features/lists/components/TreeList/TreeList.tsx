@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Trash2 } from "lucide-react";
+import { MoreVertical, Trash2 } from "lucide-react";
 import {
   confirmParentAction,
   confirmUncheckParentAction,
@@ -19,6 +19,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
@@ -173,20 +179,35 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
                     >
                       +
                     </Link>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      aria-label={`Eliminar ${node.title}`}
-                      className={styles["tree-list__delete-button"]}
-                      onClick={() =>
-                        setDeleteModalAction({
-                          id: node.id,
-                          title: node.title,
-                          hasChildren: node.children.length > 0,
-                        })}
-                    >
-                      <Trash2 className={styles["tree-list__delete-icon"]} />
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          aria-label={`Abrir acciones de ${node.title}`}
+                          className={styles["tree-list__actions-trigger"]}
+                        >
+                          <MoreVertical className={styles["tree-list__actions-trigger-icon"]} />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          variant="destructive"
+                          aria-label={`Eliminar ${node.title}`}
+                          onSelect={(event) => {
+                            event.preventDefault();
+                            setDeleteModalAction({
+                              id: node.id,
+                              title: node.title,
+                              hasChildren: node.children.length > 0,
+                            });
+                          }}
+                        >
+                          <Trash2 className={styles["tree-list__delete-icon"]} />
+                          Eliminar ítem
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               </div>

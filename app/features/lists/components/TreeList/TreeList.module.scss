@@ -68,8 +68,12 @@
   @apply ml-auto flex items-center gap-2;
 }
 
-.tree-list__delete-button {
-  @apply h-7 w-7 rounded-full p-0 text-red-600 hover:bg-red-50 hover:text-red-700;
+.tree-list__actions-trigger {
+  @apply h-7 w-7 rounded-full p-0 text-slate-500 hover:bg-slate-100 hover:text-slate-700;
+}
+
+.tree-list__actions-trigger-icon {
+  @apply h-4 w-4;
 }
 
 .tree-list__delete-icon {
