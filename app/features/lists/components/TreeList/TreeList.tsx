@@ -5,14 +5,14 @@ import { confirmParentAction, confirmUncheckParentAction, toggleItemAction } fro
 import Link from "../Link/Link";
 import type { TreeMode, VisibleNode } from "../../types";
 import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
@@ -162,7 +162,7 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
         })}
       </ul>
 
-      <AlertDialog
+      <Dialog
         open={Boolean(parentModalAction)}
         onOpenChange={(isOpen) => {
           if (!isOpen) {
@@ -170,12 +170,12 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
           }
         }}
       >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
               {parentModalAction?.intent === "complete" ? "Completar ítem padre" : "Desmarcar ítem padre"}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
+            </DialogTitle>
+            <DialogDescription>
               {parentModalAction ? (
                 parentModalAction.intent === "complete" ? (
                   <>
@@ -189,10 +189,12 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
                   </>
                 )
               ) : null}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Cancelar</Button>
+            </DialogClose>
             {parentModalAction ? (
               <form action={parentAction}>
                 <input type="hidden" name="id" value={parentModalAction.id} />
@@ -203,9 +205,9 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
                 </Button>
               </form>
             ) : null}
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

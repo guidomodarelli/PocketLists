@@ -46,15 +46,16 @@ jest.mock("@/components/ui/checkbox", () => ({
   ),
 }));
 
-jest.mock("@/components/ui/alert-dialog", () => ({
-  AlertDialog: ({ open, children }: { open: boolean; children: ReactNode }) =>
+jest.mock("@/components/ui/dialog", () => ({
+  Dialog: ({ open, children }: { open: boolean; children: ReactNode }) =>
     open ? <div data-testid="alert-dialog">{children}</div> : null,
-  AlertDialogContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  AlertDialogHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  AlertDialogTitle: ({ children }: { children: ReactNode }) => <h2>{children}</h2>,
-  AlertDialogDescription: ({ children }: { children: ReactNode }) => <p>{children}</p>,
-  AlertDialogFooter: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  AlertDialogCancel: ({ children }: { children: ReactNode }) => <button>{children}</button>,
+  DialogContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DialogHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DialogTitle: ({ children }: { children: ReactNode }) => <h2>{children}</h2>,
+  DialogDescription: ({ children }: { children: ReactNode }) => <p>{children}</p>,
+  DialogFooter: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DialogClose: ({ children, asChild }: { children: ReactNode; asChild?: boolean }) =>
+    asChild ? <>{children}</> : <button>{children}</button>,
 }));
 
 function createNode(overrides: Partial<VisibleNode> = {}): VisibleNode {

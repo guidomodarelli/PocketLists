@@ -13,6 +13,14 @@ import {
 } from "@/app/features/lists/actions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import styles from "./page.module.scss";
 
@@ -291,13 +299,15 @@ export default async function Home({ searchParams }: PageProps) {
       </main>
 
       {showResetModal ? (
-        <div className={styles["home-page__modal-overlay"]}>
-          <Card className={styles["home-page__modal-card"]}>
-            <h3 className={styles["home-page__modal-title"]}>Desmarcar completados</h3>
-            <p className={styles["home-page__modal-text"]}>
-              Vas a desmarcar todos los ítems completados. ¿Querés continuar?
-            </p>
-            <div className={styles["home-page__modal-actions"]}>
+        <Dialog open>
+          <DialogContent className={styles["home-page__modal-card"]}>
+            <DialogHeader>
+              <DialogTitle className={styles["home-page__modal-title"]}>Desmarcar completados</DialogTitle>
+              <DialogDescription className={styles["home-page__modal-text"]}>
+                Vas a desmarcar todos los ítems completados. ¿Querés continuar?
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className={styles["home-page__modal-actions"]}>
               <Link
                 href="/"
                 className={styles["home-page__modal-link"]}
@@ -312,18 +322,20 @@ export default async function Home({ searchParams }: PageProps) {
                   Confirmar y desmarcar
                 </Button>
               </form>
-            </div>
-          </Card>
-        </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       ) : null}
 
       {showAddChildModal && nodeForAddChild ? (
-        <div className={styles["home-page__modal-overlay"]}>
-          <Card className={styles["home-page__modal-card"]}>
-            <h3 className={styles["home-page__modal-title"]}>Agregar hijo</h3>
-            <p className={styles["home-page__modal-text"]}>
-              Vas a agregar un hijo a <strong>{nodeForAddChild.title}</strong>.
-            </p>
+        <Dialog open>
+          <DialogContent className={styles["home-page__modal-card"]}>
+            <DialogHeader>
+              <DialogTitle className={styles["home-page__modal-title"]}>Agregar hijo</DialogTitle>
+              <DialogDescription className={styles["home-page__modal-text"]}>
+                Vas a agregar un hijo a <strong>{nodeForAddChild.title}</strong>.
+              </DialogDescription>
+            </DialogHeader>
             <form action={createItemAction} className={styles["home-page__modal-form"]}>
               <div className={styles["home-page__field"]}>
                 <label htmlFor="new-child-title" className={styles["home-page__label"]}>
@@ -339,7 +351,7 @@ export default async function Home({ searchParams }: PageProps) {
                 />
               </div>
               <input type="hidden" name="parentId" value={nodeForAddChild.id} />
-              <div className={styles["home-page__modal-actions"]}>
+              <DialogFooter className={styles["home-page__modal-actions"]}>
                 <Link
                   href="/"
                   className={styles["home-page__modal-link"]}
@@ -352,21 +364,23 @@ export default async function Home({ searchParams }: PageProps) {
                 >
                   Agregar hijo
                 </Button>
-              </div>
+              </DialogFooter>
             </form>
-          </Card>
-        </div>
+          </DialogContent>
+        </Dialog>
       ) : null}
 
       {showUncheckModal && nodeForUncheckConfirmation ? (
-        <div className={styles["home-page__modal-overlay"]}>
-          <Card className={styles["home-page__modal-card"]}>
-            <h3 className={styles["home-page__modal-title"]}>Desmarcar ítem padre</h3>
-            <p className={styles["home-page__modal-text"]}>
-              Vas a desmarcar <strong>{nodeForUncheckConfirmation.title}</strong> y todos sus
-              descendientes. ¿Querés continuar?
-            </p>
-            <div className={styles["home-page__modal-actions"]}>
+        <Dialog open>
+          <DialogContent className={styles["home-page__modal-card"]}>
+            <DialogHeader>
+              <DialogTitle className={styles["home-page__modal-title"]}>Desmarcar ítem padre</DialogTitle>
+              <DialogDescription className={styles["home-page__modal-text"]}>
+                Vas a desmarcar <strong>{nodeForUncheckConfirmation.title}</strong> y todos sus
+                descendientes. ¿Querés continuar?
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className={styles["home-page__modal-actions"]}>
               <Link
                 href="/"
                 className={styles["home-page__modal-link"]}
@@ -382,20 +396,22 @@ export default async function Home({ searchParams }: PageProps) {
                   Confirmar y desmarcar
                 </Button>
               </form>
-            </div>
-          </Card>
-        </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       ) : null}
 
       {confirmId && nodeForConfirmation ? (
-        <div className={styles["home-page__modal-overlay"]}>
-          <Card className={styles["home-page__modal-card"]}>
-            <h3 className={styles["home-page__modal-title"]}>Completar ítem padre</h3>
-            <p className={styles["home-page__modal-text"]}>
-              Vas a completar <strong>{nodeForConfirmation.title}</strong> y todos sus descendientes.
-              ¿Querés continuar?
-            </p>
-            <div className={styles["home-page__modal-actions"]}>
+        <Dialog open>
+          <DialogContent className={styles["home-page__modal-card"]}>
+            <DialogHeader>
+              <DialogTitle className={styles["home-page__modal-title"]}>Completar ítem padre</DialogTitle>
+              <DialogDescription className={styles["home-page__modal-text"]}>
+                Vas a completar <strong>{nodeForConfirmation.title}</strong> y todos sus descendientes.
+                ¿Querés continuar?
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className={styles["home-page__modal-actions"]}>
               <Link
                 href="/"
                 className={styles["home-page__modal-link"]}
@@ -414,9 +430,9 @@ export default async function Home({ searchParams }: PageProps) {
                   Confirmar y completar todo
                 </Button>
               </form>
-            </div>
-          </Card>
-        </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       ) : null}
     </div>
   );
