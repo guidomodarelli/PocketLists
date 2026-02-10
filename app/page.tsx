@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { headers } from "next/headers";
 import TreeList from "@/app/features/lists/components/TreeList/TreeList";
 import Link from "@/app/features/lists/components/Link/Link";
-import AddItemModal from "@/app/features/lists/components/AddItemModal/AddItemModal";
+import AddRootItemButton from "@/app/features/lists/components/AddRootItemButton/AddRootItemButton";
 import CompletedItemsDialog from "@/app/features/lists/components/CompletedItemsDialog/CompletedItemsDialog";
 import type { ApiError, ItemNode, ListsResponse } from "@/app/features/lists/types";
 import { buildVisibleTree, countByStatus, findNode } from "@/app/features/lists/tree";
@@ -175,7 +175,7 @@ export default async function Home({ searchParams }: PageProps) {
             Sistema jerárquico con completado automático de padres y confirmación solo en completado
             manual.
           </p>
-          <AddItemModal />
+          <AddRootItemButton />
         </header>
         {actionError ? (
           <div className={cn(styles["home-page__banner"], styles["home-page__banner--error"])}>
@@ -241,7 +241,7 @@ export default async function Home({ searchParams }: PageProps) {
             </Badge>
           </div>
           <div className={styles["home-page__header-actions"]}>
-            <AddItemModal />
+            <AddRootItemButton />
             <CompletedItemsDialog
               nodes={completedTree}
               completedCount={completedCount}

@@ -29,9 +29,9 @@ jest.mock("@/app/features/lists/components/Link/Link", () => ({
   ),
 }));
 
-jest.mock("@/app/features/lists/components/AddItemModal/AddItemModal", () => ({
+jest.mock("@/app/features/lists/components/AddRootItemButton/AddRootItemButton", () => ({
   __esModule: true,
-  default: () => <div data-testid="add-item-modal">AddItemModal</div>,
+  default: () => <div data-testid="add-root-item-button">AddRootItemButton</div>,
 }));
 
 jest.mock("@/app/features/lists/components/CompletedItemsDialog/CompletedItemsDialog", () => ({
@@ -114,7 +114,7 @@ describe("Home page SSR", () => {
     render(view);
 
     expect(screen.getByTestId("tree-list-pending")).toHaveTextContent("nodes:0");
-    expect(screen.getByTestId("add-item-modal")).toBeInTheDocument();
+    expect(screen.getByTestId("add-root-item-button")).toBeInTheDocument();
   });
 
   test("renderiza vista principal con pendientes y acceso a completados", async () => {

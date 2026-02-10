@@ -1,0 +1,9 @@
+@reference "tailwindcss";
+
+.add-root-item-button__trigger {
+  @apply rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white;
+}
+
+.add-root-item-button__trigger:hover {
+  @apply bg-slate-950;
+}

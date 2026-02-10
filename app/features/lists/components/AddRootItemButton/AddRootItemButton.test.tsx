@@ -1,11 +1,11 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import AddItemModal from "./AddItemModal";
+import AddRootItemButton from "./AddRootItemButton";
 
-describe("AddItemModal", () => {
+describe("AddRootItemButton", () => {
   test("dispara evento global para abrir borrador raíz inline", () => {
     const eventSpy = jest.spyOn(window, "dispatchEvent");
 
-    render(<AddItemModal />);
+    render(<AddRootItemButton />);
     fireEvent.click(screen.getByRole("button", { name: "Agregar ítem" }));
 
     expect(eventSpy).toHaveBeenCalledTimes(1);

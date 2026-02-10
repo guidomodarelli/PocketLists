@@ -1,13 +1,13 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import styles from "./AddItemModal.module.scss";
+import styles from "./AddRootItemButton.module.scss";
 
-export default function AddItemModal() {
+export default function AddRootItemButton() {
   return (
     <Button
       type="button"
-      className={styles["add-item-modal__trigger"]}
+      className={styles["add-root-item-button__trigger"]}
       onClick={() => window.dispatchEvent(new CustomEvent("lists:add-root-draft"))}
     >
       Agregar ítem
