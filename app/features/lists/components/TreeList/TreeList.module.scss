@@ -21,31 +21,23 @@
 }
 
 .tree-list__context-checkbox {
-  @apply mt-1 h-4 w-4 rounded border border-slate-300 bg-white;
+  @apply mt-1 inline-flex;
 }
 
-.tree-list__confirm-link {
-  @apply mt-1 flex h-4 w-4 items-center justify-center rounded border border-slate-300 bg-white transition;
+.tree-list__confirm-form {
+  @apply mt-1 inline-flex;
 }
 
-.tree-list__confirm-icon {
-  @apply h-2 w-2 rounded-sm bg-transparent;
+.tree-list__toggle-form {
+  @apply mt-1 inline-flex border-none bg-transparent p-0 shadow-none;
 }
 
-.tree-list__toggle-button {
-  @apply mt-1 flex h-4 w-4 items-center justify-center rounded border border-slate-300 bg-white transition;
+.tree-list__checkbox {
+  @apply border-slate-300 bg-white text-white [&_svg]:h-3 [&_svg]:w-3 [&_svg]:stroke-3 data-[state=checked]:border-emerald-600 data-[state=checked]:bg-emerald-600;
 }
 
-.tree-list__toggle-button--completed {
-  @apply border-emerald-600 bg-emerald-600 shadow-sm shadow-emerald-500/40;
-}
-
-.tree-list__toggle-icon {
-  @apply h-2 w-2 rounded-sm bg-transparent;
-}
-
-.tree-list__toggle-icon--completed {
-  @apply bg-white;
+.tree-list__checkbox--readonly {
+  @apply pointer-events-none disabled:opacity-100;
 }
 
 .tree-list__content {

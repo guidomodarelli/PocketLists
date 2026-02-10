@@ -1,6 +1,7 @@
 import { toggleItemAction } from "../../actions";
 import Link from "../Link/Link";
 import type { TreeMode, VisibleNode } from "../../types";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import styles from "./TreeList.module.scss";
 
@@ -25,7 +26,6 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
       {nodes.map((node) => {
         const nextCompletedValue = node.completed ? "false" : "true";
         const needsConfirmation = node.children.length > 0 && !node.completed;
-        const confirmLink = `/?confirm=${encodeURIComponent(node.id)}`;
         const addChildLink = `/?addChild=${encodeURIComponent(node.id)}`;
 
         return (
@@ -37,39 +37,37 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
               )}
             >
               {node.isContextOnly ? (
-                <span className={styles["tree-list__context-checkbox"]} aria-hidden />
+                <span className={styles["tree-list__context-checkbox"]} aria-hidden>
+                  <Checkbox
+                    checked={false}
+                    disabled
+                    tabIndex={-1}
+                    className={cn(
+                      styles["tree-list__checkbox"],
+                      styles["tree-list__checkbox--readonly"],
+                    )}
+                  />
+                </span>
               ) : needsConfirmation ? (
-                <Link
-                  href={confirmLink}
-                  role="checkbox"
-                  aria-checked={node.completed}
-                  aria-label={`Cambiar estado de ${node.title}`}
-                  className={styles["tree-list__confirm-link"]}
-                >
-                  <span aria-hidden className={styles["tree-list__confirm-icon"]} />
-                </Link>
+                <form action="/" method="get" className={styles["tree-list__confirm-form"]}>
+                  <input type="hidden" name="confirm" value={node.id} />
+                  <Checkbox
+                    type="submit"
+                    checked={node.completed}
+                    aria-label={`Cambiar estado de ${node.title}`}
+                    className={styles["tree-list__checkbox"]}
+                  />
+                </form>
               ) : (
-                <form action={toggleItemAction}>
+                <form action={toggleItemAction} className={styles["tree-list__toggle-form"]}>
                   <input type="hidden" name="id" value={node.id} />
                   <input type="hidden" name="nextCompleted" value={nextCompletedValue} />
-                  <button
+                  <Checkbox
                     type="submit"
-                    role="checkbox"
-                    aria-checked={node.completed}
+                    checked={node.completed}
                     aria-label={`Cambiar estado de ${node.title}`}
-                    className={cn(
-                      styles["tree-list__toggle-button"],
-                      node.completed && styles["tree-list__toggle-button--completed"],
-                    )}
-                  >
-                    <span
-                      aria-hidden
-                      className={cn(
-                        styles["tree-list__toggle-icon"],
-                        node.completed && styles["tree-list__toggle-icon--completed"],
-                      )}
-                    />
-                  </button>
+                    className={styles["tree-list__checkbox"]}
+                  />
                 </form>
               )}
               <div className={styles["tree-list__content"]}>
