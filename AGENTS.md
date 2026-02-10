@@ -31,6 +31,18 @@
 - Never commit secrets. Keep local values in `.env.local` (all `.env*` files are gitignored).
 - Review dependency and config changes carefully, especially in `next.config.ts` and auth/runtime-related code.
 
+## Estrategia de testing (obligatoria)
+
+- **TDD obligatorio SIEMPRE** para cualquier cambio de código (nueva feature, refactor, bugfix o ajuste menor).
+- Flujo mandatorio en cada iteración:
+  1. Implementar o actualizar tests primero.
+  2. Verificar que fallen por la razón esperada (fase roja).
+  3. Implementar la solución mínima en código productivo.
+  4. Ejecutar tests y validar que pasen (fase verde).
+  5. Refactorizar manteniendo tests en verde.
+  6. Repetir el ciclo hasta cubrir el alcance completo.
+- No se considera terminado un cambio sin tests que cubran happy path y edge cases relevantes.
+
 ## 📁 Estructura típica
 
 ```txt
