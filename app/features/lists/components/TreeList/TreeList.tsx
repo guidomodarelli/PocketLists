@@ -268,7 +268,7 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
                             variant="ghost"
                             aria-label={`Abrir acciones de ${node.title}`}
                             className={styles["tree-list__actions-trigger"]}
-                            disabled={Boolean(editingItem) && editingItem.id !== node.id}
+                            disabled={editingItem ? editingItem.id !== node.id : false}
                           >
                             <MoreVertical className={styles["tree-list__actions-trigger-icon"]} />
                           </Button>

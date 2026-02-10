@@ -82,6 +82,7 @@ describe("services", () => {
     expect(updated).not.toBeNull();
     expect(newRoot).toBeDefined();
     expect(newRoot?.id.startsWith("item-")).toBe(true);
+    expect(updated?.[0]?.title).toBe("Nuevo item raíz");
   });
 
   test("createItem agrega item hijo cuando parentId existe", () => {
@@ -92,6 +93,7 @@ describe("services", () => {
     expect(updated).not.toBeNull();
     expect(child).toBeDefined();
     expect(child?.completed).toBe(false);
+    expect(entertainment?.children[0]?.title).toBe("Hijo nuevo");
   });
 
   test("createItem retorna null cuando parentId no existe", () => {

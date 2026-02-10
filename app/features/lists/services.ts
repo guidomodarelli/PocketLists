@@ -105,14 +105,14 @@ export function createItem(title: string, parentId?: string): ItemNode[] | null 
   const items = getStoreItems();
 
   if (!parentId) {
-    const normalized = normalizeTree([...items, newItem]);
+    const normalized = normalizeTree([newItem, ...items]);
     writeStore(normalized);
     return normalized;
   }
 
   const updated = updateNodeInTree(items, parentId, (node) => ({
     ...node,
-    children: [...node.children, newItem],
+    children: [newItem, ...node.children],
   }));
 
   if (updated === items) {
