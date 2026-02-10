@@ -54,8 +54,10 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
       >
         {nodes.map((node) => {
           const nextCompletedValue = node.completed ? "false" : "true";
-          const needsCompleteConfirmation = node.children.length > 0 && !node.completed;
-          const needsUncheckConfirmation = mode === "completed" && node.children.length > 0;
+          const hasVisibleChildren = node.children.length > 0;
+          const needsCompleteConfirmation = hasVisibleChildren && !node.completed && !node.isContextOnly;
+          const needsUncheckConfirmation =
+            mode === "completed" && hasVisibleChildren && !node.isContextOnly;
           const addChildLink = `/?addChild=${encodeURIComponent(node.id)}`;
           const checkboxState: boolean | "indeterminate" = node.completed
             ? true
@@ -72,7 +74,19 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
                   node.isContextOnly && styles["tree-list__row--context"],
                 )}
               >
-                {needsUncheckConfirmation ? (
+                {node.isContextOnly ? (
+                  <span className={styles["tree-list__context-checkbox"]} aria-hidden>
+                    <Checkbox
+                      checked={checkboxState}
+                      disabled
+                      tabIndex={-1}
+                      className={cn(
+                        styles["tree-list__checkbox"],
+                        styles["tree-list__checkbox--readonly"],
+                      )}
+                    />
+                  </span>
+                ) : needsUncheckConfirmation ? (
                   <span className={styles["tree-list__confirm-trigger"]}>
                     <Checkbox
                       checked={checkboxState}
@@ -84,18 +98,6 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
                           title: node.title,
                           intent: "uncheck",
                         })}
-                    />
-                  </span>
-                ) : node.isContextOnly ? (
-                  <span className={styles["tree-list__context-checkbox"]} aria-hidden>
-                    <Checkbox
-                      checked={checkboxState}
-                      disabled
-                      tabIndex={-1}
-                      className={cn(
-                        styles["tree-list__checkbox"],
-                        styles["tree-list__checkbox--readonly"],
-                      )}
                     />
                   </span>
                 ) : needsCompleteConfirmation ? (

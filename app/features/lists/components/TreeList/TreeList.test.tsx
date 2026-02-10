@@ -118,4 +118,21 @@ describe("TreeList", () => {
     expect(requestSubmitSpy).toHaveBeenCalledTimes(1);
     requestSubmitSpy.mockRestore();
   });
+
+  test("en un hijo hoja dentro de un parent no abre modal de parent", () => {
+    const requestSubmitSpy = jest.spyOn(HTMLFormElement.prototype, "requestSubmit");
+    const tree = createNode({
+      id: "parent",
+      title: "Padre",
+      completed: false,
+      children: [createNode({ id: "leaf-child", title: "Hoja hija", children: [] })],
+    });
+
+    render(<TreeList nodes={[tree]} mode="pending" />);
+    fireEvent.click(screen.getByLabelText("Cambiar estado de Hoja hija"));
+
+    expect(requestSubmitSpy).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("Completar ítem padre")).not.toBeInTheDocument();
+    requestSubmitSpy.mockRestore();
+  });
 });
