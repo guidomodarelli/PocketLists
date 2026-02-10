@@ -175,7 +175,6 @@ export default async function Home({ searchParams }: PageProps) {
             Sistema jerárquico con completado automático de padres y confirmación solo en completado
             manual.
           </p>
-          <AddRootItemButton />
         </header>
         {actionError ? (
           <div className={cn(styles["home-page__banner"], styles["home-page__banner--error"])}>
@@ -190,7 +189,10 @@ export default async function Home({ searchParams }: PageProps) {
               styles["home-page__list-section--pending"],
             )}
           >
-            <h2 className={styles["home-page__list-title"]}>Pendientes</h2>
+            <div className={styles["home-page__list-header"]}>
+              <h2 className={styles["home-page__list-title"]}>Pendientes</h2>
+              <AddRootItemButton />
+            </div>
             <TreeList nodes={[]} mode="pending" />
           </Card>
         </div>
@@ -241,7 +243,6 @@ export default async function Home({ searchParams }: PageProps) {
             </Badge>
           </div>
           <div className={styles["home-page__header-actions"]}>
-            <AddRootItemButton />
             <CompletedItemsDialog
               nodes={completedTree}
               completedCount={completedCount}
@@ -282,7 +283,10 @@ export default async function Home({ searchParams }: PageProps) {
               styles["home-page__list-section--pending"],
             )}
           >
-            <h2 className={styles["home-page__list-title"]}>Pendientes</h2>
+            <div className={styles["home-page__list-header"]}>
+              <h2 className={styles["home-page__list-title"]}>Pendientes</h2>
+              <AddRootItemButton />
+            </div>
             <TreeList nodes={pendingTree} mode="pending" />
           </Card>
         </div>
