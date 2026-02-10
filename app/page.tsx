@@ -12,6 +12,7 @@ import {
   resetCompletedAction,
 } from "@/app/features/lists/actions";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import {
   Dialog,
@@ -214,22 +215,22 @@ export default async function Home({ searchParams }: PageProps) {
             manual.
           </p>
           <div className={styles["home-page__badge-row"]}>
-            <span
+            <Badge
               className={cn(
                 styles["home-page__badge"],
                 styles["home-page__badge--pending"],
               )}
             >
               Pendientes: {pendingCount}
-            </span>
-            <span
+            </Badge>
+            <Badge
               className={cn(
                 styles["home-page__badge"],
                 styles["home-page__badge--completed"],
               )}
             >
               Completados: {completedCount}
-            </span>
+            </Badge>
           </div>
           <AddItemModal parentOptions={parentOptions} />
         </header>
