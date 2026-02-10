@@ -27,6 +27,11 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
         const nextCompletedValue = node.completed ? "false" : "true";
         const needsConfirmation = node.children.length > 0 && !node.completed;
         const addChildLink = `/?addChild=${encodeURIComponent(node.id)}`;
+        const checkboxState: boolean | "indeterminate" = node.completed
+          ? true
+          : node.isPartiallyCompleted
+            ? "indeterminate"
+            : false;
 
         return (
           <li key={node.id}>
@@ -39,7 +44,7 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
               {node.isContextOnly ? (
                 <span className={styles["tree-list__context-checkbox"]} aria-hidden>
                   <Checkbox
-                    checked={false}
+                    checked={checkboxState}
                     disabled
                     tabIndex={-1}
                     className={cn(
@@ -53,7 +58,7 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
                   <input type="hidden" name="confirm" value={node.id} />
                   <Checkbox
                     type="submit"
-                    checked={node.completed}
+                    checked={checkboxState}
                     aria-label={`Cambiar estado de ${node.title}`}
                     className={styles["tree-list__checkbox"]}
                   />
@@ -64,7 +69,7 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
                   <input type="hidden" name="nextCompleted" value={nextCompletedValue} />
                   <Checkbox
                     type="submit"
-                    checked={node.completed}
+                    checked={checkboxState}
                     aria-label={`Cambiar estado de ${node.title}`}
                     className={styles["tree-list__checkbox"]}
                   />

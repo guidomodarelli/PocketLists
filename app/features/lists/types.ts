@@ -11,6 +11,7 @@ export type VisibleNode = {
   id: string;
   title: string;
   completed: boolean;
+  isPartiallyCompleted: boolean;
   isContextOnly: boolean;
   children: VisibleNode[];
 };

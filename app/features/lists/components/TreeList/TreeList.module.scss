@@ -33,7 +33,7 @@
 }
 
 .tree-list__checkbox {
-  @apply border-slate-300 bg-white text-white [&_svg]:h-3 [&_svg]:w-3 [&_svg]:stroke-3 data-[state=checked]:border-emerald-600 data-[state=checked]:bg-emerald-600;
+  @apply border-slate-300 bg-white text-white [&_svg]:h-3 [&_svg]:w-3 [&_svg]:stroke-3 data-[state=checked]:border-emerald-600 data-[state=checked]:bg-emerald-600 data-[state=indeterminate]:border-emerald-600 data-[state=indeterminate]:bg-emerald-600;
 }
 
 .tree-list__checkbox--readonly {

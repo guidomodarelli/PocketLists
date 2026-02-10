@@ -1,5 +1,30 @@
 import type { ItemNode, ParentOption, TreeMode, VisibleNode } from "./types";
 
+function hasCompletedDescendant(node: ItemNode): boolean {
+  for (const child of node.children) {
+    if (child.completed || hasCompletedDescendant(child)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function hasPendingDescendant(node: ItemNode): boolean {
+  for (const child of node.children) {
+    if (!child.completed || hasPendingDescendant(child)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isNodePartiallyCompleted(node: ItemNode): boolean {
+  if (node.children.length === 0) {
+    return false;
+  }
+  return hasCompletedDescendant(node) && hasPendingDescendant(node);
+}
+
 export function normalizeNode(node: ItemNode): ItemNode {
   const children = node.children.map(normalizeNode);
   if (children.length === 0) {
@@ -80,6 +105,7 @@ export function buildVisibleNode(node: ItemNode, mode: TreeMode): VisibleNode | 
   const children = node.children
     .map((child) => buildVisibleNode(child, mode))
     .filter((child): child is VisibleNode => child !== null);
+  const isPartiallyCompleted = isNodePartiallyCompleted(node);
 
   if (mode === "pending") {
     if (node.completed && children.length === 0) {
@@ -89,6 +115,7 @@ export function buildVisibleNode(node: ItemNode, mode: TreeMode): VisibleNode | 
       id: node.id,
       title: node.title,
       completed: node.completed,
+      isPartiallyCompleted,
       children,
       isContextOnly: node.completed,
     };
@@ -102,6 +129,7 @@ export function buildVisibleNode(node: ItemNode, mode: TreeMode): VisibleNode | 
     id: node.id,
     title: node.title,
     completed: node.completed,
+    isPartiallyCompleted,
     children,
     isContextOnly: !node.completed,
   };
