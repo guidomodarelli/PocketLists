@@ -11,6 +11,14 @@ const config: Config = {
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/$1",
   },
+  collectCoverageFrom: [
+    "<rootDir>/app/**/*.{ts,tsx}",
+    "<rootDir>/components/**/*.{ts,tsx}",
+    "<rootDir>/lib/**/*.{ts,tsx}",
+    "!<rootDir>/**/*.d.ts",
+    "!<rootDir>/**/__tests__/**",
+    "!<rootDir>/**/*.test.{ts,tsx}",
+  ],
   testPathIgnorePatterns: ["<rootDir>/.next/", "<rootDir>/node_modules/"],
   clearMocks: true,
 };
