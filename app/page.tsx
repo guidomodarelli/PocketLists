@@ -5,7 +5,7 @@ import Link from "@/app/features/lists/components/Link/Link";
 import AddItemModal from "@/app/features/lists/components/AddItemModal/AddItemModal";
 import CompletedItemsDialog from "@/app/features/lists/components/CompletedItemsDialog/CompletedItemsDialog";
 import type { ApiError, ItemNode, ListsResponse } from "@/app/features/lists/types";
-import { buildVisibleTree, buildParentOptions, countByStatus, findNode } from "@/app/features/lists/tree";
+import { buildVisibleTree, countByStatus, findNode } from "@/app/features/lists/tree";
 import {
   confirmParentAction,
   confirmUncheckParentAction,
@@ -143,14 +143,6 @@ function ErrorState({ title, description }: { title: string; description: string
   );
 }
 
-function EmptyState() {
-  return (
-    <div className={styles["home-page__empty-state"]}>
-      Todavía no hay listas para mostrar. Probá cargar datos o actualizá la página.
-    </div>
-  );
-}
-
 export default async function Home({ searchParams }: PageProps) {
   const resolvedSearchParams = await Promise.resolve(searchParams);
   const result = await fetchLists();
@@ -174,8 +166,6 @@ export default async function Home({ searchParams }: PageProps) {
   const uncheckConfirmationMissing = Boolean(confirmUncheckId && !nodeForUncheckConfirmation);
   const confirmReset = getSingleParam(resolvedSearchParams, "confirmReset");
   const shouldConfirmReset = confirmReset === "true";
-  const parentOptions = buildParentOptions(items);
-
   if (items.length === 0) {
     return (
       <PageShell>
@@ -185,7 +175,7 @@ export default async function Home({ searchParams }: PageProps) {
             Sistema jerárquico con completado automático de padres y confirmación solo en completado
             manual.
           </p>
-          <AddItemModal parentOptions={parentOptions} />
+          <AddItemModal />
         </header>
         {actionError ? (
           <div className={cn(styles["home-page__banner"], styles["home-page__banner--error"])}>
@@ -193,7 +183,17 @@ export default async function Home({ searchParams }: PageProps) {
             <p className={styles["home-page__banner-description"]}>{actionError.description}</p>
           </div>
         ) : null}
-        <EmptyState />
+        <div className={styles["home-page__lists-grid"]}>
+          <Card
+            className={cn(
+              styles["home-page__list-section"],
+              styles["home-page__list-section--pending"],
+            )}
+          >
+            <h2 className={styles["home-page__list-title"]}>Pendientes</h2>
+            <TreeList nodes={[]} mode="pending" />
+          </Card>
+        </div>
       </PageShell>
     );
   }
@@ -241,7 +241,7 @@ export default async function Home({ searchParams }: PageProps) {
             </Badge>
           </div>
           <div className={styles["home-page__header-actions"]}>
-            <AddItemModal parentOptions={parentOptions} />
+            <AddItemModal />
             <CompletedItemsDialog
               nodes={completedTree}
               completedCount={completedCount}

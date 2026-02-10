@@ -113,7 +113,7 @@ describe("Home page SSR", () => {
     const view = await Home({ searchParams: {} });
     render(view);
 
-    expect(screen.getByText("Todavía no hay listas para mostrar. Probá cargar datos o actualizá la página.")).toBeInTheDocument();
+    expect(screen.getByTestId("tree-list-pending")).toHaveTextContent("nodes:0");
     expect(screen.getByTestId("add-item-modal")).toBeInTheDocument();
   });
 

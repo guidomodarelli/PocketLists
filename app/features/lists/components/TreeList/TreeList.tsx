@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { MoreVertical, Pencil, Trash2 } from "lucide-react";
 import {
   confirmParentAction,
@@ -63,12 +63,16 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
   const [parentModalAction, setParentModalAction] = useState<ParentModalAction>(null);
   const [deleteModalAction, setDeleteModalAction] = useState<DeleteModalAction>(null);
   const [editingItem, setEditingItem] = useState<{ id: string; title: string } | null>(null);
+  const [draftRootTitle, setDraftRootTitle] = useState<string | null>(null);
   const [draftChild, setDraftChild] = useState<{ parentId: string; title: string } | null>(null);
   const editInputRef = useRef<HTMLInputElement | null>(null);
+  const draftRootInputRef = useRef<HTMLInputElement | null>(null);
   const draftChildInputRef = useRef<HTMLInputElement | null>(null);
   const ignoreBlurUntilRef = useRef(0);
+  const ignoreDraftRootBlurUntilRef = useRef(0);
   const ignoreDraftBlurUntilRef = useRef(0);
   const editingItemId = editingItem?.id;
+  const hasDraftRoot = draftRootTitle !== null;
   const draftChildParentId = draftChild?.parentId;
 
   useLayoutEffect(() => {
@@ -96,6 +100,30 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
   }, [editingItemId]);
 
   useLayoutEffect(() => {
+    if (!hasDraftRoot) {
+      return;
+    }
+
+    const focusWithRetry = (attempt = 0) => {
+      const input = draftRootInputRef.current;
+      if (!input) {
+        return;
+      }
+
+      input.focus();
+      const end = input.value.length;
+      input.setSelectionRange(end, end);
+
+      if (document.activeElement !== input && attempt < 3) {
+        window.requestAnimationFrame(() => focusWithRetry(attempt + 1));
+      }
+    };
+
+    const frameId = window.requestAnimationFrame(() => focusWithRetry());
+    return () => window.cancelAnimationFrame(frameId);
+  }, [hasDraftRoot]);
+
+  useLayoutEffect(() => {
     if (!draftChildParentId) {
       return;
     }
@@ -119,7 +147,23 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
     return () => window.cancelAnimationFrame(frameId);
   }, [draftChildParentId]);
 
-  if (nodes.length === 0 && depth === 0) {
+  useEffect(() => {
+    if (mode !== "pending" || depth !== 0) {
+      return;
+    }
+
+    const handleAddRootDraft = () => {
+      ignoreDraftRootBlurUntilRef.current = Date.now() + 250;
+      setEditingItem(null);
+      setDraftChild(null);
+      setDraftRootTitle("");
+    };
+
+    window.addEventListener("lists:add-root-draft", handleAddRootDraft);
+    return () => window.removeEventListener("lists:add-root-draft", handleAddRootDraft);
+  }, [mode, depth]);
+
+  if (nodes.length === 0 && depth === 0 && !hasDraftRoot) {
     return <div className={styles["tree-list__empty"]}>No hay ítems para mostrar en esta vista.</div>;
   }
 
@@ -137,6 +181,63 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
           depth > 0 && styles["tree-list__branch"],
         )}
       >
+        {mode === "pending" && depth === 0 && hasDraftRoot ? (
+          <li>
+            <div className={styles["tree-list__row"]}>
+              <span className={styles["tree-list__context-checkbox"]} aria-hidden>
+                <Checkbox
+                  checked={false}
+                  disabled
+                  tabIndex={-1}
+                  className={cn(
+                    styles["tree-list__checkbox"],
+                    styles["tree-list__checkbox--readonly"],
+                  )}
+                />
+              </span>
+              <div className={styles["tree-list__content"]}>
+                <div className={styles["tree-list__text-wrap"]}>
+                  <form
+                    action={createItemAction}
+                    className={styles["tree-list__edit-form"]}
+                    onBlur={(event) => {
+                      if (Date.now() < ignoreDraftRootBlurUntilRef.current) {
+                        return;
+                      }
+                      const nextFocused = event.relatedTarget as Node | null;
+                      if (nextFocused && event.currentTarget.contains(nextFocused)) {
+                        return;
+                      }
+                      setDraftRootTitle(null);
+                    }}
+                  >
+                    <InputGroup className={styles["tree-list__edit-input-group"]}>
+                      <InputGroupInput
+                        ref={draftRootInputRef}
+                        name="title"
+                        value={draftRootTitle ?? ""}
+                        onChange={(event) => setDraftRootTitle(event.target.value)}
+                        className={styles["tree-list__edit-input"]}
+                        placeholder="Nuevo ítem"
+                        required
+                        autoFocus
+                      />
+                      <InputGroupAddon align="inline-end">
+                        <InputGroupButton
+                          type="submit"
+                          size="sm"
+                          className={styles["tree-list__edit-save"]}
+                        >
+                          Guardar
+                        </InputGroupButton>
+                      </InputGroupAddon>
+                    </InputGroup>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </li>
+        ) : null}
         {nodes.map((node) => {
           const nextCompletedValue = node.completed ? "false" : "true";
           const hasVisibleChildren = node.children.length > 0;
@@ -286,7 +387,7 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
                       variant="ghost"
                       aria-label={`Agregar hijo a ${node.title}`}
                       className={styles["tree-list__add-child-link"]}
-                      disabled={Boolean(editingItem) || Boolean(draftChild)}
+                      disabled={Boolean(editingItem) || Boolean(draftChild) || hasDraftRoot}
                       onClick={() => {
                         ignoreDraftBlurUntilRef.current = Date.now() + 250;
                         setEditingItem(null);
@@ -303,7 +404,11 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
                             variant="ghost"
                             aria-label={`Abrir acciones de ${node.title}`}
                             className={styles["tree-list__actions-trigger"]}
-                            disabled={Boolean(draftChild) || (editingItem ? editingItem.id !== node.id : false)}
+                            disabled={
+                              hasDraftRoot ||
+                              Boolean(draftChild) ||
+                              (editingItem ? editingItem.id !== node.id : false)
+                            }
                           >
                             <MoreVertical className={styles["tree-list__actions-trigger-icon"]} />
                           </Button>

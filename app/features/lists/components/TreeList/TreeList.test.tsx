@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import type { VisibleNode } from "../../types";
 import TreeList from "./TreeList";
@@ -102,6 +102,33 @@ function createNode(overrides: Partial<VisibleNode> = {}): VisibleNode {
 describe("TreeList", () => {
   test("muestra mensaje vacío en raíz sin nodos", () => {
     render(<TreeList nodes={[]} mode="pending" />);
+    expect(screen.getByText("No hay ítems para mostrar en esta vista.")).toBeInTheDocument();
+  });
+
+  test("en raíz pending abre borrador inline al recibir evento global de alta", () => {
+    render(<TreeList nodes={[]} mode="pending" />);
+    act(() => {
+      window.dispatchEvent(new CustomEvent("lists:add-root-draft"));
+    });
+
+    const input = screen.getByPlaceholderText("Nuevo ítem");
+    expect(input).toBeInTheDocument();
+    expect(input).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Guardar" })).toBeInTheDocument();
+  });
+
+  test("si pierde foco fuera del borrador raíz, descarta el alta", async () => {
+    render(<TreeList nodes={[]} mode="pending" />);
+    act(() => {
+      window.dispatchEvent(new CustomEvent("lists:add-root-draft"));
+    });
+
+    const input = screen.getByPlaceholderText("Nuevo ítem");
+    fireEvent.change(input, { target: { value: "Nuevo root" } });
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    fireEvent.blur(input);
+
+    expect(screen.queryByPlaceholderText("Nuevo ítem")).not.toBeInTheDocument();
     expect(screen.getByText("No hay ítems para mostrar en esta vista.")).toBeInTheDocument();
   });
 
