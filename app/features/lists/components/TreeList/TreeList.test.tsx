@@ -108,6 +108,23 @@ describe("TreeList", () => {
     expect(screen.getByText(/Vas a desmarcar/)).toBeInTheDocument();
   });
 
+  test("abre modal de desmarcar para parent parcialmente completado en completed", () => {
+    const partialParent = createNode({
+      id: "parent-partial",
+      title: "Padre parcial",
+      completed: false,
+      isPartiallyCompleted: true,
+      isContextOnly: true,
+      children: [createNode({ id: "child-completed", title: "Hijo", completed: true })],
+    });
+
+    render(<TreeList nodes={[partialParent]} mode="completed" />);
+    fireEvent.click(screen.getByLabelText("Cambiar estado de Padre parcial"));
+
+    expect(screen.getByTestId("alert-dialog")).toBeInTheDocument();
+    expect(screen.getByText("Desmarcar ítem padre")).toBeInTheDocument();
+  });
+
   test("en nodos hoja envía form al cambiar checkbox", () => {
     const requestSubmitSpy = jest.spyOn(HTMLFormElement.prototype, "requestSubmit");
     const leaf = createNode({ id: "leaf", title: "Hoja", children: [] });

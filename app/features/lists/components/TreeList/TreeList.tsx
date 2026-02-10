@@ -57,7 +57,9 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
           const hasVisibleChildren = node.children.length > 0;
           const needsCompleteConfirmation = hasVisibleChildren && !node.completed && !node.isContextOnly;
           const needsUncheckConfirmation =
-            mode === "completed" && hasVisibleChildren && !node.isContextOnly;
+            mode === "completed" &&
+            hasVisibleChildren &&
+            (node.completed || node.isPartiallyCompleted);
           const addChildLink = `/?addChild=${encodeURIComponent(node.id)}`;
           const checkboxState: boolean | "indeterminate" = node.completed
             ? true
@@ -74,19 +76,7 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
                   node.isContextOnly && styles["tree-list__row--context"],
                 )}
               >
-                {node.isContextOnly ? (
-                  <span className={styles["tree-list__context-checkbox"]} aria-hidden>
-                    <Checkbox
-                      checked={checkboxState}
-                      disabled
-                      tabIndex={-1}
-                      className={cn(
-                        styles["tree-list__checkbox"],
-                        styles["tree-list__checkbox--readonly"],
-                      )}
-                    />
-                  </span>
-                ) : needsUncheckConfirmation ? (
+                {needsUncheckConfirmation ? (
                   <span className={styles["tree-list__confirm-trigger"]}>
                     <Checkbox
                       checked={checkboxState}
@@ -98,6 +88,18 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
                           title: node.title,
                           intent: "uncheck",
                         })}
+                    />
+                  </span>
+                ) : node.isContextOnly ? (
+                  <span className={styles["tree-list__context-checkbox"]} aria-hidden>
+                    <Checkbox
+                      checked={checkboxState}
+                      disabled
+                      tabIndex={-1}
+                      className={cn(
+                        styles["tree-list__checkbox"],
+                        styles["tree-list__checkbox--readonly"],
+                      )}
                     />
                   </span>
                 ) : needsCompleteConfirmation ? (
