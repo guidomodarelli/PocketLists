@@ -1,7 +1,7 @@
 @reference "tailwindcss";
 
 .add-item-modal__trigger {
-  @apply mt-6 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white;
+  @apply rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white;
 }
 
 .add-item-modal__content {

@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import TreeList from "@/app/features/lists/components/TreeList/TreeList";
 import Link from "@/app/features/lists/components/Link/Link";
 import AddItemModal from "@/app/features/lists/components/AddItemModal/AddItemModal";
+import CompletedItemsDialog from "@/app/features/lists/components/CompletedItemsDialog/CompletedItemsDialog";
 import type { ApiError, ItemNode, ListsResponse } from "@/app/features/lists/types";
 import { buildVisibleTree, buildParentOptions, countByStatus, findNode } from "@/app/features/lists/tree";
 import {
@@ -246,7 +247,14 @@ export default async function Home({ searchParams }: PageProps) {
               Completados: {completedCount}
             </Badge>
           </div>
-          <AddItemModal parentOptions={parentOptions} />
+          <div className={styles["home-page__header-actions"]}>
+            <AddItemModal parentOptions={parentOptions} />
+            <CompletedItemsDialog
+              nodes={completedTree}
+              completedCount={completedCount}
+              canResetCompleted={canResetCompleted}
+            />
+          </div>
         </header>
 
         {actionError ? (
@@ -289,26 +297,6 @@ export default async function Home({ searchParams }: PageProps) {
           >
             <h2 className={styles["home-page__list-title"]}>Pendientes</h2>
             <TreeList nodes={pendingTree} mode="pending" />
-          </Card>
-
-          <Card
-            className={cn(
-              styles["home-page__list-section"],
-              styles["home-page__list-section--completed"],
-            )}
-          >
-            <div className={styles["home-page__list-header"]}>
-              <h2 className={styles["home-page__list-title"]}>Completados</h2>
-              {canResetCompleted ? (
-                <Link
-                  href="/?confirmReset=true"
-                  className={styles["home-page__reset-link"]}
-                >
-                  Desmarcar completados
-                </Link>
-              ) : null}
-            </div>
-            <TreeList nodes={completedTree} mode="completed" />
           </Card>
         </div>
       </main>

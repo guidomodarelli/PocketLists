@@ -24,6 +24,10 @@
   @apply mt-4 flex flex-wrap gap-3 text-xs font-medium;
 }
 
+.home-page__header-actions {
+  @apply mt-6 flex flex-wrap gap-3;
+}
+
 .home-page__badge {
   @apply rounded-full px-3 py-1;
 }
@@ -191,9 +195,6 @@
     @apply w-auto;
   }
 
-  .home-page__lists-grid {
-    @apply grid-cols-2;
-  }
 }
 
 .home-page__submit-button:hover,
