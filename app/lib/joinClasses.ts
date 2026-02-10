@@ -1,3 +1,6 @@
-export function joinClasses(...classNames: Array<string | false | null | undefined>) {
-  return classNames.filter(Boolean).join(" ");
+import type { ClassValue } from "clsx";
+import { cn } from "@/lib/utils";
+
+export function joinClasses(...classNames: ClassValue[]) {
+  return cn(...classNames);
 }
