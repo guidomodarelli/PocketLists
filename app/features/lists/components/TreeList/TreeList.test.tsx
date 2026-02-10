@@ -219,4 +219,32 @@ describe("TreeList", () => {
     expect(input).toHaveFocus();
     expect(screen.getByRole("button", { name: "Guardar" })).toBeInTheDocument();
   });
+
+  test("deshabilita los tres puntos mientras hay edición inline activa", () => {
+    const nodeA = createNode({ id: "edit-a", title: "Ítem A", children: [] });
+    const nodeB = createNode({ id: "edit-b", title: "Ítem B", children: [] });
+
+    render(<TreeList nodes={[nodeA, nodeB]} mode="pending" />);
+    fireEvent.click(screen.getByLabelText("Abrir acciones de Ítem A"));
+    fireEvent.click(screen.getByLabelText("Editar Ítem A"));
+
+    expect(screen.queryByLabelText("Abrir acciones de Ítem A")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Abrir acciones de Ítem B")).toBeDisabled();
+  });
+
+  test("si pierde foco fuera del input group cancela edición y descarta cambios", async () => {
+    const node = createNode({ id: "edit-cancel", title: "Texto base", children: [] });
+
+    render(<TreeList nodes={[node]} mode="pending" />);
+    fireEvent.click(screen.getByLabelText("Abrir acciones de Texto base"));
+    fireEvent.click(screen.getByLabelText("Editar Texto base"));
+
+    const input = screen.getByDisplayValue("Texto base");
+    fireEvent.change(input, { target: { value: "Texto modificado" } });
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    fireEvent.blur(input);
+
+    expect(screen.queryByDisplayValue("Texto modificado")).not.toBeInTheDocument();
+    expect(screen.getByText("Texto base")).toBeInTheDocument();
+  });
 });

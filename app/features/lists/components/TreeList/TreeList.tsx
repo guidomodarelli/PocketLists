@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { MoreVertical, Pencil, Trash2 } from "lucide-react";
 import {
   confirmParentAction,
@@ -64,24 +64,31 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
   const [deleteModalAction, setDeleteModalAction] = useState<DeleteModalAction>(null);
   const [editingItem, setEditingItem] = useState<{ id: string; title: string } | null>(null);
   const editInputRef = useRef<HTMLInputElement | null>(null);
+  const ignoreBlurUntilRef = useRef(0);
   const editingItemId = editingItem?.id;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!editingItemId) {
       return;
     }
 
-    const timeoutId = window.setTimeout(() => {
+    const focusWithRetry = (attempt = 0) => {
       const input = editInputRef.current;
       if (!input) {
         return;
       }
+
       input.focus();
       const end = input.value.length;
       input.setSelectionRange(end, end);
-    }, 0);
 
-    return () => window.clearTimeout(timeoutId);
+      if (document.activeElement !== input && attempt < 3) {
+        window.requestAnimationFrame(() => focusWithRetry(attempt + 1));
+      }
+    };
+
+    const frameId = window.requestAnimationFrame(() => focusWithRetry());
+    return () => window.cancelAnimationFrame(frameId);
   }, [editingItemId]);
 
   if (nodes.length === 0 && depth === 0) {
@@ -189,7 +196,20 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
                 <div className={styles["tree-list__content"]}>
                   <div className={styles["tree-list__text-wrap"]}>
                     {isEditing ? (
-                      <form action={editItemTitleAction} className={styles["tree-list__edit-form"]}>
+                      <form
+                        action={editItemTitleAction}
+                        className={styles["tree-list__edit-form"]}
+                        onBlur={(event) => {
+                          if (Date.now() < ignoreBlurUntilRef.current) {
+                            return;
+                          }
+                          const nextFocused = event.relatedTarget as Node | null;
+                          if (nextFocused && event.currentTarget.contains(nextFocused)) {
+                            return;
+                          }
+                          setEditingItem(null);
+                        }}
+                      >
                         <input type="hidden" name="id" value={node.id} />
                         <InputGroup className={styles["tree-list__edit-input-group"]}>
                           <InputGroupInput
@@ -240,55 +260,59 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
                     >
                       +
                     </Link>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          aria-label={`Abrir acciones de ${node.title}`}
-                          className={styles["tree-list__actions-trigger"]}
+                    {!isEditing ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            aria-label={`Abrir acciones de ${node.title}`}
+                            className={styles["tree-list__actions-trigger"]}
+                            disabled={Boolean(editingItem) && editingItem.id !== node.id}
+                          >
+                            <MoreVertical className={styles["tree-list__actions-trigger-icon"]} />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          onCloseAutoFocus={(event) => event.preventDefault()}
                         >
-                          <MoreVertical className={styles["tree-list__actions-trigger-icon"]} />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        align="end"
-                        onCloseAutoFocus={(event) => event.preventDefault()}
-                      >
-                        <DropdownMenuItem
-                          aria-label={`Editar ${node.title}`}
-                          onSelect={() => {
-                            setEditingItem({ id: node.id, title: node.title });
-                            window.requestAnimationFrame(() => {
-                              const input = editInputRef.current;
-                              if (!input) {
-                                return;
-                              }
-                              input.focus();
-                              const end = input.value.length;
-                              input.setSelectionRange(end, end);
-                            });
-                          }}
-                        >
-                          <Pencil className={styles["tree-list__edit-icon"]} />
-                          Editar ítem
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          variant="destructive"
-                          aria-label={`Eliminar ${node.title}`}
-                          onSelect={() => {
-                            setDeleteModalAction({
-                              id: node.id,
-                              title: node.title,
-                              hasChildren: node.children.length > 0,
-                            });
-                          }}
-                        >
-                          <Trash2 className={styles["tree-list__delete-icon"]} />
-                          Eliminar ítem
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                          <DropdownMenuItem
+                            aria-label={`Editar ${node.title}`}
+                            onSelect={() => {
+                              ignoreBlurUntilRef.current = Date.now() + 250;
+                              setEditingItem({ id: node.id, title: node.title });
+                              window.setTimeout(() => {
+                                const input = editInputRef.current;
+                                if (!input) {
+                                  return;
+                                }
+                                input.focus();
+                                const end = input.value.length;
+                                input.setSelectionRange(end, end);
+                              }, 60);
+                            }}
+                          >
+                            <Pencil className={styles["tree-list__edit-icon"]} />
+                            Editar ítem
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            variant="destructive"
+                            aria-label={`Eliminar ${node.title}`}
+                            onSelect={() => {
+                              setDeleteModalAction({
+                                id: node.id,
+                                title: node.title,
+                                hasChildren: node.children.length > 0,
+                              });
+                            }}
+                          >
+                            <Trash2 className={styles["tree-list__delete-icon"]} />
+                            Eliminar ítem
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ) : null}
                   </div>
                 </div>
               </div>
