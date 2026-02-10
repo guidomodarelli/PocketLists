@@ -5,11 +5,11 @@ import { MoreVertical, Pencil, Trash2 } from "lucide-react";
 import {
   confirmParentAction,
   confirmUncheckParentAction,
+  createItemAction,
   deleteItemAction,
   editItemTitleAction,
   toggleItemAction,
 } from "../../actions";
-import Link from "../Link/Link";
 import type { TreeMode, VisibleNode } from "../../types";
 import {
   Dialog,
@@ -63,9 +63,13 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
   const [parentModalAction, setParentModalAction] = useState<ParentModalAction>(null);
   const [deleteModalAction, setDeleteModalAction] = useState<DeleteModalAction>(null);
   const [editingItem, setEditingItem] = useState<{ id: string; title: string } | null>(null);
+  const [draftChild, setDraftChild] = useState<{ parentId: string; title: string } | null>(null);
   const editInputRef = useRef<HTMLInputElement | null>(null);
+  const draftChildInputRef = useRef<HTMLInputElement | null>(null);
   const ignoreBlurUntilRef = useRef(0);
+  const ignoreDraftBlurUntilRef = useRef(0);
   const editingItemId = editingItem?.id;
+  const draftChildParentId = draftChild?.parentId;
 
   useLayoutEffect(() => {
     if (!editingItemId) {
@@ -90,6 +94,30 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
     const frameId = window.requestAnimationFrame(() => focusWithRetry());
     return () => window.cancelAnimationFrame(frameId);
   }, [editingItemId]);
+
+  useLayoutEffect(() => {
+    if (!draftChildParentId) {
+      return;
+    }
+
+    const focusWithRetry = (attempt = 0) => {
+      const input = draftChildInputRef.current;
+      if (!input) {
+        return;
+      }
+
+      input.focus();
+      const end = input.value.length;
+      input.setSelectionRange(end, end);
+
+      if (document.activeElement !== input && attempt < 3) {
+        window.requestAnimationFrame(() => focusWithRetry(attempt + 1));
+      }
+    };
+
+    const frameId = window.requestAnimationFrame(() => focusWithRetry());
+    return () => window.cancelAnimationFrame(frameId);
+  }, [draftChildParentId]);
 
   if (nodes.length === 0 && depth === 0) {
     return <div className={styles["tree-list__empty"]}>No hay ítems para mostrar en esta vista.</div>;
@@ -117,7 +145,6 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
             mode === "completed" &&
             hasVisibleChildren &&
             (node.completed || node.isPartiallyCompleted);
-          const addChildLink = `/?addChild=${encodeURIComponent(node.id)}`;
           const checkboxState: boolean | "indeterminate" = node.completed
             ? true
             : node.isPartiallyCompleted
@@ -125,6 +152,7 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
               : false;
           const toggleFormId = `toggle-item-${node.id}`;
           const isEditing = editingItem?.id === node.id;
+          const isAddingDraftChild = draftChild?.parentId === node.id;
 
           return (
             <li key={node.id}>
@@ -253,13 +281,20 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
                     ) : null}
                   </div>
                   <div className={styles["tree-list__actions"]}>
-                    <Link
-                      href={addChildLink}
+                    <Button
+                      type="button"
+                      variant="ghost"
                       aria-label={`Agregar hijo a ${node.title}`}
                       className={styles["tree-list__add-child-link"]}
+                      disabled={Boolean(editingItem) || Boolean(draftChild)}
+                      onClick={() => {
+                        ignoreDraftBlurUntilRef.current = Date.now() + 250;
+                        setEditingItem(null);
+                        setDraftChild({ parentId: node.id, title: "" });
+                      }}
                     >
                       +
-                    </Link>
+                    </Button>
                     {!isEditing ? (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -268,7 +303,7 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
                             variant="ghost"
                             aria-label={`Abrir acciones de ${node.title}`}
                             className={styles["tree-list__actions-trigger"]}
-                            disabled={editingItem ? editingItem.id !== node.id : false}
+                            disabled={Boolean(draftChild) || (editingItem ? editingItem.id !== node.id : false)}
                           >
                             <MoreVertical className={styles["tree-list__actions-trigger-icon"]} />
                           </Button>
@@ -316,9 +351,73 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
                   </div>
                 </div>
               </div>
-              {node.children.length > 0 ? (
-                <TreeList nodes={node.children} mode={mode} depth={depth + 1} />
+              {isAddingDraftChild ? (
+                <ul className={cn(styles["tree-list"], styles["tree-list__branch"])}>
+                  <li>
+                    <div className={styles["tree-list__row"]}>
+                      <span className={styles["tree-list__context-checkbox"]} aria-hidden>
+                        <Checkbox
+                          checked={false}
+                          disabled
+                          tabIndex={-1}
+                          className={cn(
+                            styles["tree-list__checkbox"],
+                            styles["tree-list__checkbox--readonly"],
+                          )}
+                        />
+                      </span>
+                      <div className={styles["tree-list__content"]}>
+                        <div className={styles["tree-list__text-wrap"]}>
+                          <form
+                            action={createItemAction}
+                            className={styles["tree-list__edit-form"]}
+                            onBlur={(event) => {
+                              if (Date.now() < ignoreDraftBlurUntilRef.current) {
+                                return;
+                              }
+                              const nextFocused = event.relatedTarget as Node | null;
+                              if (nextFocused && event.currentTarget.contains(nextFocused)) {
+                                return;
+                              }
+                              setDraftChild(null);
+                            }}
+                          >
+                            <input type="hidden" name="parentId" value={node.id} />
+                            <InputGroup className={styles["tree-list__edit-input-group"]}>
+                              <InputGroupInput
+                                ref={draftChildInputRef}
+                                name="title"
+                                value={draftChild.title}
+                                onChange={(event) => {
+                                  setDraftChild((current) =>
+                                    current && current.parentId === node.id
+                                      ? { ...current, title: event.target.value }
+                                      : current
+                                  );
+                                }}
+                                className={styles["tree-list__edit-input"]}
+                                placeholder="Nuevo hijo"
+                                required
+                                autoFocus
+                              />
+                              <InputGroupAddon align="inline-end">
+                                <InputGroupButton
+                                  type="submit"
+                                  size="sm"
+                                  className={styles["tree-list__edit-save"]}
+                                >
+                                  Guardar
+                                </InputGroupButton>
+                              </InputGroupAddon>
+                            </InputGroup>
+                          </form>
+                        </div>
+                      </div>
+                    </div>
+                  </li>
+                </ul>
               ) : null}
+              {node.children.length > 0 ? <TreeList nodes={node.children} mode={mode} depth={depth + 1} /> : null}
             </li>
           );
         })}

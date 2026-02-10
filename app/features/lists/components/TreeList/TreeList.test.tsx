@@ -6,6 +6,7 @@ import TreeList from "./TreeList";
 jest.mock("../../actions", () => ({
   confirmParentAction: jest.fn(),
   confirmUncheckParentAction: jest.fn(),
+  createItemAction: jest.fn(),
   deleteItemAction: jest.fn(),
   editItemTitleAction: jest.fn(),
   toggleItemAction: jest.fn(),
@@ -179,6 +180,39 @@ describe("TreeList", () => {
     expect(requestSubmitSpy).toHaveBeenCalledTimes(1);
     expect(screen.queryByText("Completar ítem padre")).not.toBeInTheDocument();
     requestSubmitSpy.mockRestore();
+  });
+
+  test("al clickear + abre edición inline de nuevo hijo sin dialog", () => {
+    const parent = createNode({ id: "parent-add", title: "Padre para hijo", children: [] });
+
+    render(<TreeList nodes={[parent]} mode="pending" />);
+    fireEvent.click(screen.getByLabelText("Agregar hijo a Padre para hijo"));
+
+    const input = screen.getByPlaceholderText("Nuevo hijo");
+    expect(input).toBeInTheDocument();
+    expect(input).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Guardar" })).toBeInTheDocument();
+    expect(screen.getByDisplayValue("")).toBeInTheDocument();
+    expect(
+      screen
+        .getAllByDisplayValue("parent-add")
+        .some((element) => element.getAttribute("name") === "parentId")
+    ).toBe(true);
+  });
+
+  test("si pierde foco fuera del borrador de hijo, descarta el alta", async () => {
+    const parent = createNode({ id: "parent-discard", title: "Padre descartar", children: [] });
+
+    render(<TreeList nodes={[parent]} mode="pending" />);
+    fireEvent.click(screen.getByLabelText("Agregar hijo a Padre descartar"));
+
+    const input = screen.getByPlaceholderText("Nuevo hijo");
+    fireEvent.change(input, { target: { value: "Hijo temporal" } });
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    fireEvent.blur(input);
+
+    expect(screen.queryByPlaceholderText("Nuevo hijo")).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue("Hijo temporal")).not.toBeInTheDocument();
   });
 
   test("abre dialog de eliminación para ítem hoja", () => {

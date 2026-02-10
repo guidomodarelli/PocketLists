@@ -9,7 +9,6 @@ import { buildVisibleTree, buildParentOptions, countByStatus, findNode } from "@
 import {
   confirmParentAction,
   confirmUncheckParentAction,
-  createItemAction,
   resetCompletedAction,
 } from "@/app/features/lists/actions";
 import { Button } from "@/components/ui/button";
@@ -175,9 +174,6 @@ export default async function Home({ searchParams }: PageProps) {
   const uncheckConfirmationMissing = Boolean(confirmUncheckId && !nodeForUncheckConfirmation);
   const confirmReset = getSingleParam(resolvedSearchParams, "confirmReset");
   const shouldConfirmReset = confirmReset === "true";
-  const addChildId = getSingleParam(resolvedSearchParams, "addChild");
-  const nodeForAddChild = addChildId ? findNode(items, addChildId) : undefined;
-  const addChildMissing = Boolean(addChildId && !nodeForAddChild);
   const parentOptions = buildParentOptions(items);
 
   if (items.length === 0) {
@@ -209,9 +205,6 @@ export default async function Home({ searchParams }: PageProps) {
   const canResetCompleted = completedCount > 0;
   const resetConfirmationUnavailable = shouldConfirmReset && !canResetCompleted;
   const showResetModal = shouldConfirmReset && canResetCompleted && !confirmId && !confirmUncheckId;
-  const showAddChildModal = Boolean(
-    addChildId && nodeForAddChild && !confirmId && !confirmUncheckId && !showResetModal
-  );
   const showUncheckModal = Boolean(
     confirmUncheckId &&
       nodeForUncheckConfirmation &&
@@ -282,12 +275,6 @@ export default async function Home({ searchParams }: PageProps) {
           </div>
         ) : null}
 
-        {addChildMissing ? (
-          <div className={cn(styles["home-page__banner"], styles["home-page__banner--warning"])}>
-            No encontramos el ítem al que querías agregar un hijo. Probá actualizar la página.
-          </div>
-        ) : null}
-
         <div className={styles["home-page__lists-grid"]}>
           <Card
             className={cn(
@@ -326,49 +313,6 @@ export default async function Home({ searchParams }: PageProps) {
                 </Button>
               </form>
             </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      ) : null}
-
-      {showAddChildModal && nodeForAddChild ? (
-        <Dialog open>
-          <DialogContent className={styles["home-page__modal-card"]}>
-            <DialogHeader>
-              <DialogTitle className={styles["home-page__modal-title"]}>Agregar hijo</DialogTitle>
-              <DialogDescription className={styles["home-page__modal-text"]}>
-                Vas a agregar un hijo a <strong>{nodeForAddChild.title}</strong>.
-              </DialogDescription>
-            </DialogHeader>
-            <form action={createItemAction} className={styles["home-page__modal-form"]}>
-              <div className={styles["home-page__field"]}>
-                <label htmlFor="new-child-title" className={styles["home-page__label"]}>
-                  Título del ítem
-                </label>
-                <input
-                  id="new-child-title"
-                  name="title"
-                  required
-                  autoFocus
-                  placeholder="Ej: Documentos"
-                  className={styles["home-page__input"]}
-                />
-              </div>
-              <input type="hidden" name="parentId" value={nodeForAddChild.id} />
-              <DialogFooter className={styles["home-page__modal-actions"]}>
-                <Link
-                  href="/"
-                  className={styles["home-page__modal-link"]}
-                >
-                  Cancelar
-                </Link>
-                <Button
-                  type="submit"
-                  className={styles["home-page__modal-button"]}
-                >
-                  Agregar hijo
-                </Button>
-              </DialogFooter>
-            </form>
           </DialogContent>
         </Dialog>
       ) : null}

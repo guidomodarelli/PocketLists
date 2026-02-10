@@ -10,7 +10,6 @@ jest.mock("next/headers", () => ({
 jest.mock("@/app/features/lists/actions", () => ({
   confirmParentAction: jest.fn(),
   confirmUncheckParentAction: jest.fn(),
-  createItemAction: jest.fn(),
   resetCompletedAction: jest.fn(),
 }));
 
@@ -147,14 +146,14 @@ describe("Home page SSR", () => {
     expect(screen.getByText("Vas a desmarcar todos los ítems completados. ¿Querés continuar?")).toBeInTheDocument();
   });
 
-  test("muestra banner cuando addChild apunta a un ítem inexistente", async () => {
+  test("muestra banner cuando confirm apunta a un ítem inexistente", async () => {
     mockFetchResponse({
       items: [{ id: "root", title: "Root", completed: false, children: [] }],
     });
 
-    const view = await Home({ searchParams: { addChild: "missing-id" } });
+    const view = await Home({ searchParams: { confirm: "missing-id" } });
     render(view);
 
-    expect(screen.getByText("No encontramos el ítem al que querías agregar un hijo. Probá actualizar la página.")).toBeInTheDocument();
+    expect(screen.getByText("No encontramos el ítem que querías confirmar. Probá actualizar la página.")).toBeInTheDocument();
   });
 });
