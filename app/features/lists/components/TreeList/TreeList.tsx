@@ -1,7 +1,7 @@
 import { toggleItemAction } from "../../actions";
 import Link from "../Link/Link";
 import type { TreeMode, VisibleNode } from "../../types";
-import { joinClasses } from "@/app/lib/joinClasses";
+import { cn } from "@/lib/utils";
 import styles from "./TreeList.module.scss";
 
 type TreeListProps = {
@@ -17,7 +17,7 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
 
   return (
     <ul
-      className={joinClasses(
+      className={cn(
         styles["tree-list"],
         depth > 0 && styles["tree-list__branch"],
       )}
@@ -31,7 +31,7 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
         return (
           <li key={node.id}>
             <div
-              className={joinClasses(
+              className={cn(
                 styles["tree-list__row"],
                 node.isContextOnly && styles["tree-list__row--context"],
               )}
@@ -57,14 +57,14 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
                     role="checkbox"
                     aria-checked={node.completed}
                     aria-label={`Cambiar estado de ${node.title}`}
-                    className={joinClasses(
+                    className={cn(
                       styles["tree-list__toggle-button"],
                       node.completed && styles["tree-list__toggle-button--completed"],
                     )}
                   >
                     <span
                       aria-hidden
-                      className={joinClasses(
+                      className={cn(
                         styles["tree-list__toggle-icon"],
                         node.completed && styles["tree-list__toggle-icon--completed"],
                       )}
@@ -75,7 +75,7 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
               <div className={styles["tree-list__content"]}>
                 <div className={styles["tree-list__text-wrap"]}>
                   <p
-                    className={joinClasses(
+                    className={cn(
                       styles["tree-list__title"],
                       node.completed && styles["tree-list__title--completed"],
                     )}

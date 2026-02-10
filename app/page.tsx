@@ -6,7 +6,7 @@ import ParentSelector from "@/app/features/lists/components/ParentSelector/Paren
 import type { ApiError, ItemNode, ListsResponse } from "@/app/features/lists/types";
 import { buildVisibleTree, buildParentOptions, countByStatus, findNode } from "@/app/features/lists/tree";
 import { confirmParentAction, createItemAction, resetCompletedAction } from "@/app/features/lists/actions";
-import { joinClasses } from "@/app/lib/joinClasses";
+import { cn } from "@/lib/utils";
 import styles from "./page.module.scss";
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -100,7 +100,7 @@ function PageShell({ children }: { children: ReactNode }) {
 
 function ErrorState({ title, description }: { title: string; description: string }) {
   return (
-    <div className={joinClasses(styles["home-page__inline-state"], styles["home-page__inline-state--error"])}>
+    <div className={cn(styles["home-page__inline-state"], styles["home-page__inline-state--error"])}>
       <h2 className={styles["home-page__inline-state-title"]}>{title}</h2>
       <p className={styles["home-page__inline-state-description"]}>{description}</p>
       <Link
@@ -189,7 +189,7 @@ export default async function Home({ searchParams }: PageProps) {
           </div>
         </header>
         {actionError ? (
-          <div className={joinClasses(styles["home-page__banner"], styles["home-page__banner--error"])}>
+          <div className={cn(styles["home-page__banner"], styles["home-page__banner--error"])}>
             <h2 className={styles["home-page__banner-title"]}>{actionError.title}</h2>
             <p className={styles["home-page__banner-description"]}>{actionError.description}</p>
           </div>
@@ -219,7 +219,7 @@ export default async function Home({ searchParams }: PageProps) {
           </p>
           <div className={styles["home-page__badge-row"]}>
             <span
-              className={joinClasses(
+              className={cn(
                 styles["home-page__badge"],
                 styles["home-page__badge--pending"],
               )}
@@ -227,7 +227,7 @@ export default async function Home({ searchParams }: PageProps) {
               Pendientes: {pendingCount}
             </span>
             <span
-              className={joinClasses(
+              className={cn(
                 styles["home-page__badge"],
                 styles["home-page__badge--completed"],
               )}
@@ -270,33 +270,33 @@ export default async function Home({ searchParams }: PageProps) {
         </header>
 
         {actionError ? (
-          <div className={joinClasses(styles["home-page__banner"], styles["home-page__banner--error"])}>
+          <div className={cn(styles["home-page__banner"], styles["home-page__banner--error"])}>
             <h2 className={styles["home-page__banner-title"]}>{actionError.title}</h2>
             <p className={styles["home-page__banner-description"]}>{actionError.description}</p>
           </div>
         ) : null}
 
         {confirmationMissing ? (
-          <div className={joinClasses(styles["home-page__banner"], styles["home-page__banner--warning"])}>
+          <div className={cn(styles["home-page__banner"], styles["home-page__banner--warning"])}>
             No encontramos el ítem que querías confirmar. Probá actualizar la página.
           </div>
         ) : null}
 
         {resetConfirmationUnavailable ? (
-          <div className={joinClasses(styles["home-page__banner"], styles["home-page__banner--warning"])}>
+          <div className={cn(styles["home-page__banner"], styles["home-page__banner--warning"])}>
             No hay ítems completados para desmarcar. Probá actualizar la página.
           </div>
         ) : null}
 
         {addChildMissing ? (
-          <div className={joinClasses(styles["home-page__banner"], styles["home-page__banner--warning"])}>
+          <div className={cn(styles["home-page__banner"], styles["home-page__banner--warning"])}>
             No encontramos el ítem al que querías agregar un hijo. Probá actualizar la página.
           </div>
         ) : null}
 
         <div className={styles["home-page__lists-grid"]}>
           <section
-            className={joinClasses(
+            className={cn(
               styles["home-page__list-section"],
               styles["home-page__list-section--pending"],
             )}
@@ -306,7 +306,7 @@ export default async function Home({ searchParams }: PageProps) {
           </section>
 
           <section
-            className={joinClasses(
+            className={cn(
               styles["home-page__list-section"],
               styles["home-page__list-section--completed"],
             )}
@@ -414,7 +414,7 @@ export default async function Home({ searchParams }: PageProps) {
                 <input type="hidden" name="id" value={nodeForConfirmation.id} />
                 <button
                   type="submit"
-                  className={joinClasses(
+                  className={cn(
                     styles["home-page__modal-button"],
                     styles["home-page__modal-button--confirm"],
                   )}
