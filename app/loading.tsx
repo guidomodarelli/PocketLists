@@ -1,7 +1,9 @@
+import styles from "./loading.module.scss";
+
 export default function Loading() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-100 via-slate-50 to-white px-4 py-8">
-      <div className="mx-auto w-full max-w-4xl rounded-2xl border border-slate-200 bg-white/85 p-6 text-sm text-slate-600 shadow-xl shadow-slate-200/70 backdrop-blur-sm">
+    <div className={styles["loading-page"]}>
+      <div className={styles["loading-page__card"]}>
         Cargando listas...
       </div>
     </div>

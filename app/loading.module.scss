@@ -1,0 +1,9 @@
+@reference "tailwindcss";
+
+.loading-page {
+  @apply min-h-screen bg-linear-to-b from-slate-100 via-slate-50 to-white px-4 py-8;
+}
+
+.loading-page__card {
+  @apply mx-auto w-full max-w-4xl rounded-2xl border border-slate-200 bg-white/85 p-6 text-sm text-slate-600 shadow-xl shadow-slate-200/70 backdrop-blur-sm;
+}

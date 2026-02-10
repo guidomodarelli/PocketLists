@@ -9,6 +9,18 @@
 ## Coding Style & Naming Conventions
 - Language: TypeScript with `strict` mode enabled; prefer explicit types for non-trivial data structures.
 
+## Estándares obligatorios de UI y estilos
+
+- **Tailwind CSS obligatorio**: los estilos de la interfaz deben construirse utilizando Tailwind CSS como base.
+- **SCSS Module obligatorio por componente/página**: cada archivo de componente o página debe tener su archivo asociado `Nombre.module.scss` en la misma carpeta, compartiendo el mismo nombre base.
+- **Estructura de carpetas obligatoria (no reservados)**:
+  - Cada componente debe vivir en una carpeta con su mismo nombre.
+  - Cada página no reservada debe vivir en una carpeta con su mismo nombre.
+  - Dentro de esa carpeta, el archivo TSX y el archivo SCSS Module deben compartir nombre base.
+  - Ejemplo: `Componente/Componente.tsx` + `Componente/Componente.module.scss`.
+- **Excepción para archivos reservados de Next.js**: `page.tsx`, `layout.tsx`, `loading.tsx` y `error.tsx` mantienen su convención de nombre reservada, pero igual deben tener su archivo asociado (`page.module.scss`, `layout.module.scss`, etc.).
+- **BEM mandatorio en SCSS**: todas las clases declaradas en `*.module.scss` deben seguir BEM (`bloque`, `bloque__elemento`, `bloque--modificador`, `bloque__elemento--modificador`).
+
 ## Security & Configuration Tips
 - Never commit secrets. Keep local values in `.env.local` (all `.env*` files are gitignored).
 - Review dependency and config changes carefully, especially in `next.config.ts` and auth/runtime-related code.

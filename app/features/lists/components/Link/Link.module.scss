@@ -1,0 +1,5 @@
+@reference "tailwindcss";
+
+.link {
+  @apply transition-colors;
+}

@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
 import { headers } from "next/headers";
-import TreeList from "@/app/features/lists/components/TreeList";
-import Link from "@/app/features/lists/components/Link";
-import SelectorPadre from "@/app/features/lists/components/SelectorPadre";
+import TreeList from "@/app/features/lists/components/TreeList/TreeList";
+import Link from "@/app/features/lists/components/Link/Link";
+import SelectorPadre from "@/app/features/lists/components/SelectorPadre/SelectorPadre";
 import type { ApiError, ItemNode, ListsResponse } from "@/app/features/lists/types";
 import { buildVisibleTree, construirOpcionesPadre, countByStatus, findNode } from "@/app/features/lists/tree";
 import { confirmParentAction, crearItemAction, resetCompletedAction } from "@/app/features/lists/actions";
+import styles from "./page.module.scss";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -14,6 +15,10 @@ type PageProps = {
 };
 
 type FetchResult = { items: ItemNode[] } | { error: string; details?: string };
+
+function unirClases(...classNames: Array<string | false | undefined>) {
+  return classNames.filter(Boolean).join(" ");
+}
 
 async function getBaseUrl(): Promise<string> {
   const headerList = await headers();
@@ -78,7 +83,7 @@ async function fetchLists(): Promise<FetchResult> {
     }
 
     return { items: (data as ListsResponse).items ?? [] };
-  } catch (error) {
+  } catch {
     return {
       error: "No se pudieron obtener las listas.",
       details: "Intentá recargar la página. Si el problema persiste, probá más tarde.",
@@ -88,8 +93,8 @@ async function fetchLists(): Promise<FetchResult> {
 
 function PageShell({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-100 via-slate-50 to-white px-4 py-8">
-      <main className="mx-auto w-full max-w-6xl rounded-2xl border border-slate-200 bg-white/85 p-6 shadow-xl shadow-slate-200/70 backdrop-blur-sm sm:p-8">
+    <div className={styles["home-page"]}>
+      <main className={styles["home-page__main"]}>
         {children}
       </main>
     </div>
@@ -98,12 +103,12 @@ function PageShell({ children }: { children: ReactNode }) {
 
 function ErrorState({ title, description }: { title: string; description: string }) {
   return (
-    <div className="rounded-xl border border-rose-200 bg-rose-50/70 p-5 text-sm text-rose-900">
-      <h2 className="text-base font-semibold">{title}</h2>
-      <p className="mt-2 text-rose-700">{description}</p>
+    <div className={unirClases(styles["home-page__inline-state"], styles["home-page__inline-state--error"])}>
+      <h2 className={styles["home-page__inline-state-title"]}>{title}</h2>
+      <p className={styles["home-page__inline-state-description"]}>{description}</p>
       <Link
         href="/"
-        className="mt-4 inline-flex items-center rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-xs font-semibold text-rose-700"
+        className={styles["home-page__inline-state-link"]}
       >
         Reintentar
       </Link>
@@ -113,7 +118,7 @@ function ErrorState({ title, description }: { title: string; description: string
 
 function EmptyState() {
   return (
-    <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-500">
+    <div className={styles["home-page__empty-state"]}>
       Todavía no hay listas para mostrar. Probá cargar datos o actualizá la página.
     </div>
   );
@@ -147,17 +152,17 @@ export default async function Home({ searchParams }: PageProps) {
   if (items.length === 0) {
     return (
       <PageShell>
-        <header className="mb-8">
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Lista de viaje</h1>
-          <p className="mt-2 text-sm text-slate-600">
+        <header className={styles["home-page__header"]}>
+          <h1 className={styles["home-page__title"]}>Lista de viaje</h1>
+          <p className={styles["home-page__subtitle"]}>
             Sistema jerárquico con completado automático de padres y confirmación solo en completado
             manual.
           </p>
-          <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50/80 p-4">
-            <h2 className="text-sm font-semibold text-slate-900">Agregar ítem</h2>
-            <form action={crearItemAction} className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_auto]">
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-slate-600" htmlFor="nuevo-item-titulo-vacio">
+          <div className={styles["home-page__form-card"]}>
+            <h2 className={styles["home-page__section-title"]}>Agregar ítem</h2>
+            <form action={crearItemAction} className={styles["home-page__add-form"]}>
+              <div className={styles["home-page__field"]}>
+                <label className={styles["home-page__label"]} htmlFor="nuevo-item-titulo-vacio">
                   Título del ítem
                 </label>
                 <input
@@ -165,7 +170,7 @@ export default async function Home({ searchParams }: PageProps) {
                   name="title"
                   required
                   placeholder="Ej: Linterna"
-                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
+                  className={styles["home-page__input"]}
                 />
               </div>
               <SelectorPadre
@@ -175,10 +180,10 @@ export default async function Home({ searchParams }: PageProps) {
                 placeholder="Buscá un ítem existente"
                 ayuda="Opcional. Si no elegís padre, se agrega como raíz."
               />
-              <div className="flex items-end">
+              <div className={styles["home-page__form-actions"]}>
                 <button
                   type="submit"
-                  className="w-full rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-950 lg:w-auto"
+                  className={styles["home-page__submit-button"]}
                 >
                   Agregar
                 </button>
@@ -187,9 +192,9 @@ export default async function Home({ searchParams }: PageProps) {
           </div>
         </header>
         {actionError ? (
-          <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50/70 p-4 text-sm text-rose-900">
-            <h2 className="text-base font-semibold">{actionError.title}</h2>
-            <p className="mt-1 text-rose-700">{actionError.description}</p>
+          <div className={unirClases(styles["home-page__banner"], styles["home-page__banner--error"])}>
+            <h2 className={styles["home-page__banner-title"]}>{actionError.title}</h2>
+            <p className={styles["home-page__banner-description"]}>{actionError.description}</p>
           </div>
         ) : null}
         <EmptyState />
@@ -207,27 +212,37 @@ export default async function Home({ searchParams }: PageProps) {
   const showAddChildModal = Boolean(addChildId && nodeForAddChild && !confirmId && !showResetModal);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-100 via-slate-50 to-white px-4 py-8">
-      <main className="mx-auto w-full max-w-6xl rounded-2xl border border-slate-200 bg-white/85 p-6 shadow-xl shadow-slate-200/70 backdrop-blur-sm sm:p-8">
-        <header className="mb-8">
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Lista de viaje</h1>
-          <p className="mt-2 text-sm text-slate-600">
+    <div className={styles["home-page"]}>
+      <main className={styles["home-page__main"]}>
+        <header className={styles["home-page__header"]}>
+          <h1 className={styles["home-page__title"]}>Lista de viaje</h1>
+          <p className={styles["home-page__subtitle"]}>
             Sistema jerárquico con completado automático de padres y confirmación solo en completado
             manual.
           </p>
-          <div className="mt-4 flex flex-wrap gap-3 text-xs font-medium">
-            <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-900">
+          <div className={styles["home-page__badge-row"]}>
+            <span
+              className={unirClases(
+                styles["home-page__badge"],
+                styles["home-page__badge--pending"],
+              )}
+            >
               Pendientes: {pendingCount}
             </span>
-            <span className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-900">
+            <span
+              className={unirClases(
+                styles["home-page__badge"],
+                styles["home-page__badge--completed"],
+              )}
+            >
               Completados: {completedCount}
             </span>
           </div>
-          <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50/80 p-4">
-            <h2 className="text-sm font-semibold text-slate-900">Agregar ítem</h2>
-            <form action={crearItemAction} className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_auto]">
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-slate-600" htmlFor="nuevo-item-titulo">
+          <div className={styles["home-page__form-card"]}>
+            <h2 className={styles["home-page__section-title"]}>Agregar ítem</h2>
+            <form action={crearItemAction} className={styles["home-page__add-form"]}>
+              <div className={styles["home-page__field"]}>
+                <label className={styles["home-page__label"]} htmlFor="nuevo-item-titulo">
                   Título del ítem
                 </label>
                 <input
@@ -235,7 +250,7 @@ export default async function Home({ searchParams }: PageProps) {
                   name="title"
                   required
                   placeholder="Ej: Linterna"
-                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
+                  className={styles["home-page__input"]}
                 />
               </div>
               <SelectorPadre
@@ -245,10 +260,10 @@ export default async function Home({ searchParams }: PageProps) {
                 placeholder="Buscá un ítem existente"
                 ayuda="Opcional. Si no elegís padre, se agrega como raíz."
               />
-              <div className="flex items-end">
+              <div className={styles["home-page__form-actions"]}>
                 <button
                   type="submit"
-                  className="w-full rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-950 lg:w-auto"
+                  className={styles["home-page__submit-button"]}
                 >
                   Agregar
                 </button>
@@ -258,43 +273,53 @@ export default async function Home({ searchParams }: PageProps) {
         </header>
 
         {actionError ? (
-          <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50/70 p-4 text-sm text-rose-900">
-            <h2 className="text-base font-semibold">{actionError.title}</h2>
-            <p className="mt-1 text-rose-700">{actionError.description}</p>
+          <div className={unirClases(styles["home-page__banner"], styles["home-page__banner--error"])}>
+            <h2 className={styles["home-page__banner-title"]}>{actionError.title}</h2>
+            <p className={styles["home-page__banner-description"]}>{actionError.description}</p>
           </div>
         ) : null}
 
         {confirmationMissing ? (
-          <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50/70 p-4 text-sm text-amber-900">
+          <div className={unirClases(styles["home-page__banner"], styles["home-page__banner--warning"])}>
             No encontramos el ítem que querías confirmar. Probá actualizar la página.
           </div>
         ) : null}
 
         {resetConfirmationUnavailable ? (
-          <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50/70 p-4 text-sm text-amber-900">
+          <div className={unirClases(styles["home-page__banner"], styles["home-page__banner--warning"])}>
             No hay ítems completados para desmarcar. Probá actualizar la página.
           </div>
         ) : null}
 
         {addChildMissing ? (
-          <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50/70 p-4 text-sm text-amber-900">
+          <div className={unirClases(styles["home-page__banner"], styles["home-page__banner--warning"])}>
             No encontramos el ítem al que querías agregar un hijo. Probá actualizar la página.
           </div>
         ) : null}
 
-        <div className="grid gap-6 lg:grid-cols-2">
-          <section className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
-            <h2 className="mb-4 text-lg font-semibold text-slate-900">Pendientes</h2>
+        <div className={styles["home-page__lists-grid"]}>
+          <section
+            className={unirClases(
+              styles["home-page__list-section"],
+              styles["home-page__list-section--pending"],
+            )}
+          >
+            <h2 className={styles["home-page__list-title"]}>Pendientes</h2>
             <TreeList nodes={pendingTree} mode="pending" />
           </section>
 
-          <section className="rounded-xl border border-slate-200 bg-emerald-50/60 p-4">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-lg font-semibold text-slate-900">Completados</h2>
+          <section
+            className={unirClases(
+              styles["home-page__list-section"],
+              styles["home-page__list-section--completed"],
+            )}
+          >
+            <div className={styles["home-page__list-header"]}>
+              <h2 className={styles["home-page__list-title"]}>Completados</h2>
               {canResetCompleted ? (
                 <Link
                   href="/?confirmReset=true"
-                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                  className={styles["home-page__reset-link"]}
                 >
                   Desmarcar completados
                 </Link>
@@ -306,23 +331,23 @@ export default async function Home({ searchParams }: PageProps) {
       </main>
 
       {showResetModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-            <h3 className="text-lg font-semibold text-slate-900">Desmarcar completados</h3>
-            <p className="mt-3 text-sm text-slate-600">
+        <div className={styles["home-page__modal-overlay"]}>
+          <div className={styles["home-page__modal-card"]}>
+            <h3 className={styles["home-page__modal-title"]}>Desmarcar completados</h3>
+            <p className={styles["home-page__modal-text"]}>
               Vas a desmarcar todos los ítems completados. ¿Querés continuar?
             </p>
-            <div className="mt-6 flex justify-end gap-3">
+            <div className={styles["home-page__modal-actions"]}>
               <Link
                 href="/"
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                className={styles["home-page__modal-link"]}
               >
                 Cancelar
               </Link>
               <form action={resetCompletedAction}>
                 <button
                   type="submit"
-                  className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-950"
+                  className={styles["home-page__modal-button"]}
                 >
                   Confirmar y desmarcar
                 </button>
@@ -333,15 +358,15 @@ export default async function Home({ searchParams }: PageProps) {
       ) : null}
 
       {showAddChildModal && nodeForAddChild ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-            <h3 className="text-lg font-semibold text-slate-900">Agregar hijo</h3>
-            <p className="mt-3 text-sm text-slate-600">
+        <div className={styles["home-page__modal-overlay"]}>
+          <div className={styles["home-page__modal-card"]}>
+            <h3 className={styles["home-page__modal-title"]}>Agregar hijo</h3>
+            <p className={styles["home-page__modal-text"]}>
               Vas a agregar un hijo a <strong>{nodeForAddChild.title}</strong>.
             </p>
-            <form action={crearItemAction} className="mt-5 space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="nuevo-hijo-titulo" className="text-xs font-semibold text-slate-600">
+            <form action={crearItemAction} className={styles["home-page__modal-form"]}>
+              <div className={styles["home-page__field"]}>
+                <label htmlFor="nuevo-hijo-titulo" className={styles["home-page__label"]}>
                   Título del ítem
                 </label>
                 <input
@@ -350,20 +375,20 @@ export default async function Home({ searchParams }: PageProps) {
                   required
                   autoFocus
                   placeholder="Ej: Documentos"
-                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
+                  className={styles["home-page__input"]}
                 />
               </div>
               <input type="hidden" name="parentId" value={nodeForAddChild.id} />
-              <div className="flex justify-end gap-3">
+              <div className={styles["home-page__modal-actions"]}>
                 <Link
                   href="/"
-                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                  className={styles["home-page__modal-link"]}
                 >
                   Cancelar
                 </Link>
                 <button
                   type="submit"
-                  className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-950"
+                  className={styles["home-page__modal-button"]}
                 >
                   Agregar hijo
                 </button>
@@ -374,17 +399,17 @@ export default async function Home({ searchParams }: PageProps) {
       ) : null}
 
       {confirmId && nodeForConfirmation ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-            <h3 className="text-lg font-semibold text-slate-900">Completar ítem padre</h3>
-            <p className="mt-3 text-sm text-slate-600">
+        <div className={styles["home-page__modal-overlay"]}>
+          <div className={styles["home-page__modal-card"]}>
+            <h3 className={styles["home-page__modal-title"]}>Completar ítem padre</h3>
+            <p className={styles["home-page__modal-text"]}>
               Vas a completar <strong>{nodeForConfirmation.title}</strong> y todos sus descendientes.
               ¿Querés continuar?
             </p>
-            <div className="mt-6 flex justify-end gap-3">
+            <div className={styles["home-page__modal-actions"]}>
               <Link
                 href="/"
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                className={styles["home-page__modal-link"]}
               >
                 Cancelar
               </Link>
@@ -392,7 +417,10 @@ export default async function Home({ searchParams }: PageProps) {
                 <input type="hidden" name="id" value={nodeForConfirmation.id} />
                 <button
                   type="submit"
-                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+                  className={unirClases(
+                    styles["home-page__modal-button"],
+                    styles["home-page__modal-button--confirm"],
+                  )}
                 >
                   Confirmar y completar todo
                 </button>

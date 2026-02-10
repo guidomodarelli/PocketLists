@@ -1,7 +1,8 @@
 "use client";
 
 import { useId, useMemo, useState } from "react";
-import type { OpcionPadre } from "../types";
+import type { OpcionPadre } from "../../types";
+import styles from "./SelectorPadre.module.scss";
 
 type SelectorPadreProps = {
   opciones: OpcionPadre[];
@@ -33,8 +34,8 @@ export default function SelectorPadre({
   };
 
   return (
-    <div className="space-y-2">
-      <label htmlFor={inputId} className="text-xs font-semibold text-slate-600">
+    <div className={styles["selector-padre"]}>
+      <label htmlFor={inputId} className={styles["selector-padre__label"]}>
         {label}
       </label>
       <input
@@ -43,7 +44,7 @@ export default function SelectorPadre({
         value={texto}
         onChange={(event) => actualizarSeleccion(event.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
+        className={styles["selector-padre__input"]}
       />
       <datalist id={datalistId}>
         {opciones.map((opcion) => (
@@ -51,7 +52,7 @@ export default function SelectorPadre({
         ))}
       </datalist>
       <input type="hidden" name={name} value={idSeleccionado} />
-      {ayuda ? <p className="text-xs text-slate-500">{ayuda}</p> : null}
+      {ayuda ? <p className={styles["selector-padre__help"]}>{ayuda}</p> : null}
     </div>
   );
 }

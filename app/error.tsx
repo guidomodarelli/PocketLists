@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import styles from "./error.module.scss";
 
 type ErrorProps = {
   error: Error & { digest?: string };
@@ -13,16 +14,16 @@ export default function Error({ error, reset }: ErrorProps) {
   }, [error]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-100 via-slate-50 to-white px-4 py-8">
-      <div className="mx-auto w-full max-w-4xl rounded-2xl border border-rose-200 bg-rose-50/70 p-6 shadow-xl shadow-slate-200/70">
-        <h2 className="text-lg font-semibold text-rose-900">Ocurrió un error al cargar las listas</h2>
-        <p className="mt-2 text-sm text-rose-700">
+    <div className={styles["error-page"]}>
+      <div className={styles["error-page__card"]}>
+        <h2 className={styles["error-page__title"]}>Ocurrió un error al cargar las listas</h2>
+        <p className={styles["error-page__description"]}>
           Volvé a intentarlo o recargá la página si el problema persiste.
         </p>
         <button
           type="button"
           onClick={reset}
-          className="mt-4 rounded-lg border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-700"
+          className={styles["error-page__button"]}
         >
           Reintentar
         </button>

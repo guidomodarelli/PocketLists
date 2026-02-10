@@ -1,0 +1,215 @@
+@reference "tailwindcss";
+
+.home-page {
+  @apply min-h-screen bg-linear-to-b from-slate-100 via-slate-50 to-white px-4 py-8;
+}
+
+.home-page__main {
+  @apply mx-auto w-full max-w-6xl rounded-2xl border border-slate-200 bg-white/85 p-6 shadow-xl shadow-slate-200/70 backdrop-blur-sm;
+}
+
+.home-page__header {
+  @apply mb-8;
+}
+
+.home-page__title {
+  @apply text-3xl font-semibold tracking-tight text-slate-900;
+}
+
+.home-page__subtitle {
+  @apply mt-2 text-sm text-slate-600;
+}
+
+.home-page__badge-row {
+  @apply mt-4 flex flex-wrap gap-3 text-xs font-medium;
+}
+
+.home-page__badge {
+  @apply rounded-full px-3 py-1;
+}
+
+.home-page__badge--pending {
+  @apply bg-amber-100 text-amber-900;
+}
+
+.home-page__badge--completed {
+  @apply bg-emerald-100 text-emerald-900;
+}
+
+.home-page__form-card {
+  @apply mt-6 rounded-xl border border-slate-200 bg-slate-50/80 p-4;
+}
+
+.home-page__section-title {
+  @apply text-sm font-semibold text-slate-900;
+}
+
+.home-page__add-form {
+  @apply mt-4 grid gap-4;
+}
+
+.home-page__field {
+  @apply flex flex-col gap-2;
+}
+
+.home-page__label {
+  @apply text-xs font-semibold text-slate-600;
+}
+
+.home-page__input {
+  @apply w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200;
+}
+
+.home-page__form-actions {
+  @apply flex items-end;
+}
+
+.home-page__submit-button {
+  @apply w-full rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white;
+}
+
+.home-page__inline-state {
+  @apply rounded-xl border p-5 text-sm;
+}
+
+.home-page__inline-state--error {
+  @apply border-rose-200 bg-rose-50/70 text-rose-900;
+}
+
+.home-page__inline-state-title {
+  @apply text-base font-semibold;
+}
+
+.home-page__inline-state-description {
+  @apply mt-2 text-rose-700;
+}
+
+.home-page__inline-state-link {
+  @apply mt-4 inline-flex items-center rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-xs font-semibold text-rose-700;
+}
+
+.home-page__empty-state {
+  @apply rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-500;
+}
+
+.home-page__banner {
+  @apply mb-6 rounded-xl border p-4 text-sm;
+}
+
+.home-page__banner--error {
+  @apply border-rose-200 bg-rose-50/70 text-rose-900;
+}
+
+.home-page__banner--warning {
+  @apply border-amber-200 bg-amber-50/70 text-amber-900;
+}
+
+.home-page__banner-title {
+  @apply text-base font-semibold;
+}
+
+.home-page__banner-description {
+  @apply mt-1 text-rose-700;
+}
+
+.home-page__lists-grid {
+  @apply grid gap-6;
+}
+
+.home-page__list-section {
+  @apply rounded-xl border p-4;
+}
+
+.home-page__list-section--pending {
+  @apply border-slate-200 bg-slate-50/80;
+}
+
+.home-page__list-section--completed {
+  @apply border-slate-200 bg-emerald-50/60;
+}
+
+.home-page__list-header {
+  @apply mb-4 flex flex-wrap items-center justify-between gap-3;
+}
+
+.home-page__list-title {
+  @apply mb-4 text-lg font-semibold text-slate-900;
+}
+
+.home-page__list-header .home-page__list-title {
+  @apply mb-0;
+}
+
+.home-page__reset-link {
+  @apply rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700;
+}
+
+.home-page__modal-overlay {
+  @apply fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4;
+}
+
+.home-page__modal-card {
+  @apply w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl;
+}
+
+.home-page__modal-title {
+  @apply text-lg font-semibold text-slate-900;
+}
+
+.home-page__modal-text {
+  @apply mt-3 text-sm text-slate-600;
+}
+
+.home-page__modal-form {
+  @apply mt-5 space-y-4;
+}
+
+.home-page__modal-actions {
+  @apply mt-6 flex justify-end gap-3;
+}
+
+.home-page__modal-link {
+  @apply rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700;
+}
+
+.home-page__modal-button {
+  @apply rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white;
+}
+
+.home-page__modal-button--confirm {
+  @apply bg-emerald-600;
+}
+
+@media (min-width: 640px) {
+  .home-page__main {
+    @apply p-8;
+  }
+}
+
+@media (min-width: 1024px) {
+  .home-page__add-form {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 2fr) auto;
+  }
+
+  .home-page__submit-button {
+    @apply w-auto;
+  }
+
+  .home-page__lists-grid {
+    @apply grid-cols-2;
+  }
+}
+
+.home-page__submit-button:hover,
+.home-page__modal-button:hover {
+  @apply bg-slate-950;
+}
+
+.home-page__reset-link:hover,
+.home-page__modal-link:hover {
+  @apply bg-slate-100;
+}
+
+.home-page__modal-button--confirm:hover {
+  @apply bg-emerald-700;
+}

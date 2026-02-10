@@ -1,0 +1,73 @@
+@reference "tailwindcss";
+
+.tree-list {
+  @apply space-y-2;
+}
+
+.tree-list__branch {
+  @apply mt-2 border-l border-slate-200 pl-4;
+}
+
+.tree-list__empty {
+  @apply rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-500;
+}
+
+.tree-list__row {
+  @apply flex items-start gap-3 rounded-lg bg-white px-2 py-1.5 shadow-sm transition;
+}
+
+.tree-list__row--context {
+  @apply bg-slate-100/80 shadow-none;
+}
+
+.tree-list__context-checkbox {
+  @apply mt-1 h-4 w-4 rounded border border-slate-300 bg-white;
+}
+
+.tree-list__confirm-link {
+  @apply mt-1 flex h-4 w-4 items-center justify-center rounded border border-slate-300 bg-white transition;
+}
+
+.tree-list__confirm-icon {
+  @apply h-2 w-2 rounded-sm bg-transparent;
+}
+
+.tree-list__toggle-button {
+  @apply mt-1 flex h-4 w-4 items-center justify-center rounded border border-slate-300 bg-white transition;
+}
+
+.tree-list__toggle-button--completed {
+  @apply border-emerald-600 bg-emerald-600 shadow-sm shadow-emerald-500/40;
+}
+
+.tree-list__toggle-icon {
+  @apply h-2 w-2 rounded-sm bg-transparent;
+}
+
+.tree-list__toggle-icon--completed {
+  @apply bg-white;
+}
+
+.tree-list__content {
+  @apply flex w-full items-center justify-between gap-2;
+}
+
+.tree-list__text-wrap {
+  @apply flex-1;
+}
+
+.tree-list__title {
+  @apply text-sm font-medium text-slate-900;
+}
+
+.tree-list__title--completed {
+  @apply text-slate-500 line-through;
+}
+
+.tree-list__context-label {
+  @apply text-xs text-slate-500;
+}
+
+.tree-list__add-child-link {
+  @apply ml-auto inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-900;
+}
