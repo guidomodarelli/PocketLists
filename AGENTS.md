@@ -232,13 +232,14 @@ Excepciones permitidas (y unicas):
 
 - Archivos `*.md`.
 - Texto mostrado al usuario final en pantalla (copy de UI, labels, placeholders, mensajes de validacion y feedback visible para usuario).
+- Texto de errores en strings (por ejemplo, `throw new Error(...)`, campos `error/details` de respuestas API y mensajes de validacion/negocio de error).
 
 Todo lo demas debe estar en **English**, incluyendo:
 
 - Nombres de carpetas, archivos y rutas.
 - Nombres de componentes, funciones, variables, clases, tipos, interfaces, enums y constantes.
 - Nombres de clases CSS/SCSS y selectores BEM.
-- Comentarios tecnicos, logs y mensajes internos no visibles para usuario.
+- Comentarios tecnicos, logs y mensajes internos no visibles para usuario (excepto mensajes de error).
 - Mensajes de commit, PRs y comentarios de revision.
 
 Si hay duda, la regla por defecto es: **English**.

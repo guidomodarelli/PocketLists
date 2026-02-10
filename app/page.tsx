@@ -2,10 +2,11 @@ import type { ReactNode } from "react";
 import { headers } from "next/headers";
 import TreeList from "@/app/features/lists/components/TreeList/TreeList";
 import Link from "@/app/features/lists/components/Link/Link";
-import SelectorPadre from "@/app/features/lists/components/SelectorPadre/SelectorPadre";
+import ParentSelector from "@/app/features/lists/components/ParentSelector/ParentSelector";
 import type { ApiError, ItemNode, ListsResponse } from "@/app/features/lists/types";
-import { buildVisibleTree, construirOpcionesPadre, countByStatus, findNode } from "@/app/features/lists/tree";
-import { confirmParentAction, crearItemAction, resetCompletedAction } from "@/app/features/lists/actions";
+import { buildVisibleTree, buildParentOptions, countByStatus, findNode } from "@/app/features/lists/tree";
+import { confirmParentAction, createItemAction, resetCompletedAction } from "@/app/features/lists/actions";
+import { joinClasses } from "@/app/lib/joinClasses";
 import styles from "./page.module.scss";
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -15,10 +16,6 @@ type PageProps = {
 };
 
 type FetchResult = { items: ItemNode[] } | { error: string; details?: string };
-
-function unirClases(...classNames: Array<string | false | undefined>) {
-  return classNames.filter(Boolean).join(" ");
-}
 
 async function getBaseUrl(): Promise<string> {
   const headerList = await headers();
@@ -45,14 +42,14 @@ function resolveActionError(errorParam?: string): { title: string; description: 
     return null;
   }
 
-  if (errorParam === "accion") {
+  if (errorParam === "action") {
     return {
       title: "No pudimos actualizar el estado.",
       description: "Reintentá la acción o recargá la página para sincronizar los datos.",
     };
   }
 
-  if (errorParam === "agregar") {
+  if (errorParam === "add") {
     return {
       title: "No pudimos agregar el ítem.",
       description: "Revisá el título y el padre seleccionado, y volvé a intentarlo.",
@@ -103,7 +100,7 @@ function PageShell({ children }: { children: ReactNode }) {
 
 function ErrorState({ title, description }: { title: string; description: string }) {
   return (
-    <div className={unirClases(styles["home-page__inline-state"], styles["home-page__inline-state--error"])}>
+    <div className={joinClasses(styles["home-page__inline-state"], styles["home-page__inline-state--error"])}>
       <h2 className={styles["home-page__inline-state-title"]}>{title}</h2>
       <p className={styles["home-page__inline-state-description"]}>{description}</p>
       <Link
@@ -147,7 +144,7 @@ export default async function Home({ searchParams }: PageProps) {
   const addChildId = getSingleParam(resolvedSearchParams, "addChild");
   const nodeForAddChild = addChildId ? findNode(items, addChildId) : undefined;
   const addChildMissing = Boolean(addChildId && !nodeForAddChild);
-  const opcionesPadre = construirOpcionesPadre(items);
+  const parentOptions = buildParentOptions(items);
 
   if (items.length === 0) {
     return (
@@ -160,25 +157,25 @@ export default async function Home({ searchParams }: PageProps) {
           </p>
           <div className={styles["home-page__form-card"]}>
             <h2 className={styles["home-page__section-title"]}>Agregar ítem</h2>
-            <form action={crearItemAction} className={styles["home-page__add-form"]}>
+            <form action={createItemAction} className={styles["home-page__add-form"]}>
               <div className={styles["home-page__field"]}>
-                <label className={styles["home-page__label"]} htmlFor="nuevo-item-titulo-vacio">
+                <label className={styles["home-page__label"]} htmlFor="new-item-title-empty">
                   Título del ítem
                 </label>
                 <input
-                  id="nuevo-item-titulo-vacio"
+                  id="new-item-title-empty"
                   name="title"
                   required
                   placeholder="Ej: Linterna"
                   className={styles["home-page__input"]}
                 />
               </div>
-              <SelectorPadre
-                opciones={opcionesPadre}
+              <ParentSelector
+                options={parentOptions}
                 name="parentId"
                 label="Agregar como hijo de"
                 placeholder="Buscá un ítem existente"
-                ayuda="Opcional. Si no elegís padre, se agrega como raíz."
+                helpText="Opcional. Si no elegís padre, se agrega como raíz."
               />
               <div className={styles["home-page__form-actions"]}>
                 <button
@@ -192,7 +189,7 @@ export default async function Home({ searchParams }: PageProps) {
           </div>
         </header>
         {actionError ? (
-          <div className={unirClases(styles["home-page__banner"], styles["home-page__banner--error"])}>
+          <div className={joinClasses(styles["home-page__banner"], styles["home-page__banner--error"])}>
             <h2 className={styles["home-page__banner-title"]}>{actionError.title}</h2>
             <p className={styles["home-page__banner-description"]}>{actionError.description}</p>
           </div>
@@ -222,7 +219,7 @@ export default async function Home({ searchParams }: PageProps) {
           </p>
           <div className={styles["home-page__badge-row"]}>
             <span
-              className={unirClases(
+              className={joinClasses(
                 styles["home-page__badge"],
                 styles["home-page__badge--pending"],
               )}
@@ -230,7 +227,7 @@ export default async function Home({ searchParams }: PageProps) {
               Pendientes: {pendingCount}
             </span>
             <span
-              className={unirClases(
+              className={joinClasses(
                 styles["home-page__badge"],
                 styles["home-page__badge--completed"],
               )}
@@ -240,25 +237,25 @@ export default async function Home({ searchParams }: PageProps) {
           </div>
           <div className={styles["home-page__form-card"]}>
             <h2 className={styles["home-page__section-title"]}>Agregar ítem</h2>
-            <form action={crearItemAction} className={styles["home-page__add-form"]}>
+            <form action={createItemAction} className={styles["home-page__add-form"]}>
               <div className={styles["home-page__field"]}>
-                <label className={styles["home-page__label"]} htmlFor="nuevo-item-titulo">
+                <label className={styles["home-page__label"]} htmlFor="new-item-title">
                   Título del ítem
                 </label>
                 <input
-                  id="nuevo-item-titulo"
+                  id="new-item-title"
                   name="title"
                   required
                   placeholder="Ej: Linterna"
                   className={styles["home-page__input"]}
                 />
               </div>
-              <SelectorPadre
-                opciones={opcionesPadre}
+              <ParentSelector
+                options={parentOptions}
                 name="parentId"
                 label="Agregar como hijo de"
                 placeholder="Buscá un ítem existente"
-                ayuda="Opcional. Si no elegís padre, se agrega como raíz."
+                helpText="Opcional. Si no elegís padre, se agrega como raíz."
               />
               <div className={styles["home-page__form-actions"]}>
                 <button
@@ -273,33 +270,33 @@ export default async function Home({ searchParams }: PageProps) {
         </header>
 
         {actionError ? (
-          <div className={unirClases(styles["home-page__banner"], styles["home-page__banner--error"])}>
+          <div className={joinClasses(styles["home-page__banner"], styles["home-page__banner--error"])}>
             <h2 className={styles["home-page__banner-title"]}>{actionError.title}</h2>
             <p className={styles["home-page__banner-description"]}>{actionError.description}</p>
           </div>
         ) : null}
 
         {confirmationMissing ? (
-          <div className={unirClases(styles["home-page__banner"], styles["home-page__banner--warning"])}>
+          <div className={joinClasses(styles["home-page__banner"], styles["home-page__banner--warning"])}>
             No encontramos el ítem que querías confirmar. Probá actualizar la página.
           </div>
         ) : null}
 
         {resetConfirmationUnavailable ? (
-          <div className={unirClases(styles["home-page__banner"], styles["home-page__banner--warning"])}>
+          <div className={joinClasses(styles["home-page__banner"], styles["home-page__banner--warning"])}>
             No hay ítems completados para desmarcar. Probá actualizar la página.
           </div>
         ) : null}
 
         {addChildMissing ? (
-          <div className={unirClases(styles["home-page__banner"], styles["home-page__banner--warning"])}>
+          <div className={joinClasses(styles["home-page__banner"], styles["home-page__banner--warning"])}>
             No encontramos el ítem al que querías agregar un hijo. Probá actualizar la página.
           </div>
         ) : null}
 
         <div className={styles["home-page__lists-grid"]}>
           <section
-            className={unirClases(
+            className={joinClasses(
               styles["home-page__list-section"],
               styles["home-page__list-section--pending"],
             )}
@@ -309,7 +306,7 @@ export default async function Home({ searchParams }: PageProps) {
           </section>
 
           <section
-            className={unirClases(
+            className={joinClasses(
               styles["home-page__list-section"],
               styles["home-page__list-section--completed"],
             )}
@@ -364,13 +361,13 @@ export default async function Home({ searchParams }: PageProps) {
             <p className={styles["home-page__modal-text"]}>
               Vas a agregar un hijo a <strong>{nodeForAddChild.title}</strong>.
             </p>
-            <form action={crearItemAction} className={styles["home-page__modal-form"]}>
+            <form action={createItemAction} className={styles["home-page__modal-form"]}>
               <div className={styles["home-page__field"]}>
-                <label htmlFor="nuevo-hijo-titulo" className={styles["home-page__label"]}>
+                <label htmlFor="new-child-title" className={styles["home-page__label"]}>
                   Título del ítem
                 </label>
                 <input
-                  id="nuevo-hijo-titulo"
+                  id="new-child-title"
                   name="title"
                   required
                   autoFocus
@@ -417,7 +414,7 @@ export default async function Home({ searchParams }: PageProps) {
                 <input type="hidden" name="id" value={nodeForConfirmation.id} />
                 <button
                   type="submit"
-                  className={unirClases(
+                  className={joinClasses(
                     styles["home-page__modal-button"],
                     styles["home-page__modal-button--confirm"],
                   )}

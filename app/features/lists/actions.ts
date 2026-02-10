@@ -2,7 +2,7 @@
 
 import { revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
-import { completeParent, crearItem, getNodeById, resetCompletedItems, toggleItem } from "./services";
+import { completeParent, createItem, getNodeById, resetCompletedItems, toggleItem } from "./services";
 
 function readRequiredString(formData: FormData, key: string): string {
   const value = formData.get(key);
@@ -38,7 +38,7 @@ export async function toggleItemAction(formData: FormData): Promise<void> {
   const currentNode = getNodeById(id);
 
   if (!currentNode) {
-    redirect("/?error=accion");
+    redirect("/?error=action");
   }
 
   if (nextCompleted && currentNode.children.length > 0 && !currentNode.completed) {
@@ -55,7 +55,7 @@ export async function confirmParentAction(formData: FormData): Promise<void> {
   const currentNode = getNodeById(id);
 
   if (!currentNode) {
-    redirect("/?error=accion");
+    redirect("/?error=action");
   }
 
   completeParent(id);
@@ -69,17 +69,17 @@ export async function resetCompletedAction(): Promise<void> {
   redirect("/");
 }
 
-export async function crearItemAction(formData: FormData): Promise<void> {
+export async function createItemAction(formData: FormData): Promise<void> {
   const title = readRequiredString(formData, "title");
   const parentId = readOptionalString(formData, "parentId");
 
   if (parentId && !getNodeById(parentId)) {
-    redirect("/?error=agregar");
+    redirect("/?error=add");
   }
 
-  const result = crearItem(title, parentId);
+  const result = createItem(title, parentId);
   if (!result) {
-    redirect("/?error=agregar");
+    redirect("/?error=add");
   }
 
   revalidateTag("lists", "max");

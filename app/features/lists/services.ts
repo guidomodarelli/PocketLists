@@ -64,8 +64,8 @@ export function resetCompletedItems(): ItemNode[] {
   return normalized;
 }
 
-export function crearItem(title: string, parentId?: string): ItemNode[] | null {
-  const nuevoItem: ItemNode = {
+export function createItem(title: string, parentId?: string): ItemNode[] | null {
+  const newItem: ItemNode = {
     id: `item-${randomUUID()}`,
     title,
     completed: false,
@@ -75,14 +75,14 @@ export function crearItem(title: string, parentId?: string): ItemNode[] | null {
   const items = getStoreItems();
 
   if (!parentId) {
-    const normalized = normalizeTree([...items, nuevoItem]);
+    const normalized = normalizeTree([...items, newItem]);
     writeStore(normalized);
     return normalized;
   }
 
   const updated = updateNodeInTree(items, parentId, (node) => ({
     ...node,
-    children: [...node.children, nuevoItem],
+    children: [...node.children, newItem],
   }));
 
   if (updated === items) {

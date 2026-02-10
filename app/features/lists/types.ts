@@ -24,7 +24,7 @@ export type ApiError = {
   details?: string;
 };
 
-export type OpcionPadre = {
+export type ParentOption = {
   id: string;
-  etiqueta: string;
+  label: string;
 };
