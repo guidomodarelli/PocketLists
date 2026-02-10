@@ -233,8 +233,7 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
                           aria-label={`Editar ${node.title}`}
-                          onSelect={(event) => {
-                            event.preventDefault();
+                          onSelect={() => {
                             setEditingItem({ id: node.id, title: node.title });
                           }}
                         >
@@ -244,8 +243,7 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
                         <DropdownMenuItem
                           variant="destructive"
                           aria-label={`Eliminar ${node.title}`}
-                          onSelect={(event) => {
-                            event.preventDefault();
+                          onSelect={() => {
                             setDeleteModalAction({
                               id: node.id,
                               title: node.title,
