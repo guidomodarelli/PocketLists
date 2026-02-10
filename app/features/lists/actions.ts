@@ -2,7 +2,7 @@
 
 import { revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
-import { completeParent, createItem, getNodeById, resetCompletedItems, toggleItem } from "./services";
+import { completeParent, createItem, getNodeById, resetCompletedItems, toggleItem, uncheckParent } from "./services";
 
 function readRequiredString(formData: FormData, key: string): string {
   const value = formData.get(key);
@@ -59,6 +59,19 @@ export async function confirmParentAction(formData: FormData): Promise<void> {
   }
 
   completeParent(id);
+  revalidateTag("lists", "max");
+  redirect("/");
+}
+
+export async function confirmUncheckParentAction(formData: FormData): Promise<void> {
+  const id = readRequiredString(formData, "id");
+  const currentNode = getNodeById(id);
+
+  if (!currentNode) {
+    redirect("/?error=action");
+  }
+
+  uncheckParent(id);
   revalidateTag("lists", "max");
   redirect("/");
 }

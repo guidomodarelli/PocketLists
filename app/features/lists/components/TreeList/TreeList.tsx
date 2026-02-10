@@ -25,7 +25,8 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
     >
       {nodes.map((node) => {
         const nextCompletedValue = node.completed ? "false" : "true";
-        const needsConfirmation = node.children.length > 0 && !node.completed;
+        const needsCompleteConfirmation = node.children.length > 0 && !node.completed;
+        const needsUncheckConfirmation = mode === "completed" && node.children.length > 0;
         const addChildLink = `/?addChild=${encodeURIComponent(node.id)}`;
         const checkboxState: boolean | "indeterminate" = node.completed
           ? true
@@ -41,7 +42,17 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
                 node.isContextOnly && styles["tree-list__row--context"],
               )}
             >
-              {node.isContextOnly ? (
+              {needsUncheckConfirmation ? (
+                <form action="/" method="get" className={styles["tree-list__confirm-form"]}>
+                  <input type="hidden" name="confirmUncheck" value={node.id} />
+                  <Checkbox
+                    type="submit"
+                    checked={checkboxState}
+                    aria-label={`Cambiar estado de ${node.title}`}
+                    className={styles["tree-list__checkbox"]}
+                  />
+                </form>
+              ) : node.isContextOnly ? (
                 <span className={styles["tree-list__context-checkbox"]} aria-hidden>
                   <Checkbox
                     checked={checkboxState}
@@ -53,7 +64,7 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
                     )}
                   />
                 </span>
-              ) : needsConfirmation ? (
+              ) : needsCompleteConfirmation ? (
                 <form action="/" method="get" className={styles["tree-list__confirm-form"]}>
                   <input type="hidden" name="confirm" value={node.id} />
                   <Checkbox

@@ -57,6 +57,13 @@ export function completeParent(id: string): ItemNode[] {
   return normalized;
 }
 
+export function uncheckParent(id: string): ItemNode[] {
+  const updated = updateNodeInTree(getStoreItems(), id, (node) => setSubtreeCompletion(node, false));
+  const normalized = normalizeTree(updated);
+  writeStore(normalized);
+  return normalized;
+}
+
 export function resetCompletedItems(): ItemNode[] {
   const updated = getStoreItems().map((item) => setSubtreeCompletion(item, false));
   const normalized = normalizeTree(updated);

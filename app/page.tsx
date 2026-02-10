@@ -5,7 +5,12 @@ import Link from "@/app/features/lists/components/Link/Link";
 import ParentSelector from "@/app/features/lists/components/ParentSelector/ParentSelector";
 import type { ApiError, ItemNode, ListsResponse } from "@/app/features/lists/types";
 import { buildVisibleTree, buildParentOptions, countByStatus, findNode } from "@/app/features/lists/tree";
-import { confirmParentAction, createItemAction, resetCompletedAction } from "@/app/features/lists/actions";
+import {
+  confirmParentAction,
+  confirmUncheckParentAction,
+  createItemAction,
+  resetCompletedAction,
+} from "@/app/features/lists/actions";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import styles from "./page.module.scss";
@@ -140,6 +145,9 @@ export default async function Home({ searchParams }: PageProps) {
   const confirmId = getSingleParam(resolvedSearchParams, "confirm");
   const nodeForConfirmation = confirmId ? findNode(items, confirmId) : undefined;
   const confirmationMissing = Boolean(confirmId && !nodeForConfirmation);
+  const confirmUncheckId = getSingleParam(resolvedSearchParams, "confirmUncheck");
+  const nodeForUncheckConfirmation = confirmUncheckId ? findNode(items, confirmUncheckId) : undefined;
+  const uncheckConfirmationMissing = Boolean(confirmUncheckId && !nodeForUncheckConfirmation);
   const confirmReset = getSingleParam(resolvedSearchParams, "confirmReset");
   const shouldConfirmReset = confirmReset === "true";
   const addChildId = getSingleParam(resolvedSearchParams, "addChild");
@@ -206,8 +214,17 @@ export default async function Home({ searchParams }: PageProps) {
   const completedCount = countByStatus(items, true);
   const canResetCompleted = completedCount > 0;
   const resetConfirmationUnavailable = shouldConfirmReset && !canResetCompleted;
-  const showResetModal = shouldConfirmReset && canResetCompleted && !confirmId;
-  const showAddChildModal = Boolean(addChildId && nodeForAddChild && !confirmId && !showResetModal);
+  const showResetModal = shouldConfirmReset && canResetCompleted && !confirmId && !confirmUncheckId;
+  const showAddChildModal = Boolean(
+    addChildId && nodeForAddChild && !confirmId && !confirmUncheckId && !showResetModal
+  );
+  const showUncheckModal = Boolean(
+    confirmUncheckId &&
+      nodeForUncheckConfirmation &&
+      nodeForUncheckConfirmation.children.length > 0 &&
+      !confirmId &&
+      !showResetModal
+  );
 
   return (
     <div className={styles["home-page"]}>
@@ -280,6 +297,12 @@ export default async function Home({ searchParams }: PageProps) {
         {confirmationMissing ? (
           <div className={cn(styles["home-page__banner"], styles["home-page__banner--warning"])}>
             No encontramos el ítem que querías confirmar. Probá actualizar la página.
+          </div>
+        ) : null}
+
+        {uncheckConfirmationMissing ? (
+          <div className={cn(styles["home-page__banner"], styles["home-page__banner--warning"])}>
+            No encontramos el ítem que querías desmarcar. Probá actualizar la página.
           </div>
         ) : null}
 
@@ -392,6 +415,35 @@ export default async function Home({ searchParams }: PageProps) {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      ) : null}
+
+      {showUncheckModal && nodeForUncheckConfirmation ? (
+        <div className={styles["home-page__modal-overlay"]}>
+          <div className={styles["home-page__modal-card"]}>
+            <h3 className={styles["home-page__modal-title"]}>Desmarcar ítem padre</h3>
+            <p className={styles["home-page__modal-text"]}>
+              Vas a desmarcar <strong>{nodeForUncheckConfirmation.title}</strong> y todos sus
+              descendientes. ¿Querés continuar?
+            </p>
+            <div className={styles["home-page__modal-actions"]}>
+              <Link
+                href="/"
+                className={styles["home-page__modal-link"]}
+              >
+                Cancelar
+              </Link>
+              <form action={confirmUncheckParentAction}>
+                <input type="hidden" name="id" value={nodeForUncheckConfirmation.id} />
+                <Button
+                  type="submit"
+                  className={styles["home-page__modal-button"]}
+                >
+                  Confirmar y desmarcar
+                </Button>
+              </form>
+            </div>
           </div>
         </div>
       ) : null}
