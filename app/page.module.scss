@@ -5,7 +5,7 @@
 }
 
 .home-page__main {
-  @apply mx-auto w-full max-w-6xl rounded-2xl border border-slate-200 bg-white/85 p-6 shadow-xl shadow-slate-200/70 backdrop-blur-sm;
+  @apply mx-auto w-full max-w-6xl;
 }
 
 .home-page__header {
@@ -37,7 +37,7 @@
 }
 
 .home-page__form-card {
-  @apply mt-6 rounded-xl border border-slate-200 bg-slate-50/80 p-4;
+  @apply mt-6 gap-0 rounded-xl border border-slate-200 bg-slate-50/80 p-4;
 }
 
 .home-page__section-title {
@@ -117,7 +117,7 @@
 }
 
 .home-page__list-section {
-  @apply rounded-xl border p-4;
+  @apply gap-0 rounded-xl border p-4;
 }
 
 .home-page__list-section--pending {
@@ -149,7 +149,7 @@
 }
 
 .home-page__modal-card {
-  @apply w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl;
+  @apply w-full max-w-md gap-0 rounded-2xl bg-white p-6 shadow-2xl;
 }
 
 .home-page__modal-title {

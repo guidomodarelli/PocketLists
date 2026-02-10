@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import styles from "./error.module.scss";
 
 type ErrorProps = {
@@ -16,7 +17,7 @@ export default function Error({ error, reset }: ErrorProps) {
 
   return (
     <div className={styles["error-page"]}>
-      <div className={styles["error-page__card"]}>
+      <Card className={styles["error-page__card"]}>
         <h2 className={styles["error-page__title"]}>Ocurrió un error al cargar las listas</h2>
         <p className={styles["error-page__description"]}>
           Volvé a intentarlo o recargá la página si el problema persiste.
@@ -28,7 +29,7 @@ export default function Error({ error, reset }: ErrorProps) {
         >
           Reintentar
         </Button>
-      </div>
+      </Card>
     </div>
   );
 }

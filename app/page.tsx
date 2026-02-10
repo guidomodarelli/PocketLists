@@ -12,6 +12,7 @@ import {
   resetCompletedAction,
 } from "@/app/features/lists/actions";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import styles from "./page.module.scss";
 
@@ -164,7 +165,7 @@ export default async function Home({ searchParams }: PageProps) {
             Sistema jerárquico con completado automático de padres y confirmación solo en completado
             manual.
           </p>
-          <div className={styles["home-page__form-card"]}>
+          <Card className={styles["home-page__form-card"]}>
             <h2 className={styles["home-page__section-title"]}>Agregar ítem</h2>
             <form action={createItemAction} className={styles["home-page__add-form"]}>
               <div className={styles["home-page__field"]}>
@@ -195,7 +196,7 @@ export default async function Home({ searchParams }: PageProps) {
                 </Button>
               </div>
             </form>
-          </div>
+          </Card>
         </header>
         {actionError ? (
           <div className={cn(styles["home-page__banner"], styles["home-page__banner--error"])}>
@@ -253,7 +254,7 @@ export default async function Home({ searchParams }: PageProps) {
               Completados: {completedCount}
             </span>
           </div>
-          <div className={styles["home-page__form-card"]}>
+          <Card className={styles["home-page__form-card"]}>
             <h2 className={styles["home-page__section-title"]}>Agregar ítem</h2>
             <form action={createItemAction} className={styles["home-page__add-form"]}>
               <div className={styles["home-page__field"]}>
@@ -284,7 +285,7 @@ export default async function Home({ searchParams }: PageProps) {
                 </Button>
               </div>
             </form>
-          </div>
+          </Card>
         </header>
 
         {actionError ? (
@@ -319,7 +320,7 @@ export default async function Home({ searchParams }: PageProps) {
         ) : null}
 
         <div className={styles["home-page__lists-grid"]}>
-          <section
+          <Card
             className={cn(
               styles["home-page__list-section"],
               styles["home-page__list-section--pending"],
@@ -327,9 +328,9 @@ export default async function Home({ searchParams }: PageProps) {
           >
             <h2 className={styles["home-page__list-title"]}>Pendientes</h2>
             <TreeList nodes={pendingTree} mode="pending" />
-          </section>
+          </Card>
 
-          <section
+          <Card
             className={cn(
               styles["home-page__list-section"],
               styles["home-page__list-section--completed"],
@@ -347,13 +348,13 @@ export default async function Home({ searchParams }: PageProps) {
               ) : null}
             </div>
             <TreeList nodes={completedTree} mode="completed" />
-          </section>
+          </Card>
         </div>
       </main>
 
       {showResetModal ? (
         <div className={styles["home-page__modal-overlay"]}>
-          <div className={styles["home-page__modal-card"]}>
+          <Card className={styles["home-page__modal-card"]}>
             <h3 className={styles["home-page__modal-title"]}>Desmarcar completados</h3>
             <p className={styles["home-page__modal-text"]}>
               Vas a desmarcar todos los ítems completados. ¿Querés continuar?
@@ -374,13 +375,13 @@ export default async function Home({ searchParams }: PageProps) {
                 </Button>
               </form>
             </div>
-          </div>
+          </Card>
         </div>
       ) : null}
 
       {showAddChildModal && nodeForAddChild ? (
         <div className={styles["home-page__modal-overlay"]}>
-          <div className={styles["home-page__modal-card"]}>
+          <Card className={styles["home-page__modal-card"]}>
             <h3 className={styles["home-page__modal-title"]}>Agregar hijo</h3>
             <p className={styles["home-page__modal-text"]}>
               Vas a agregar un hijo a <strong>{nodeForAddChild.title}</strong>.
@@ -415,13 +416,13 @@ export default async function Home({ searchParams }: PageProps) {
                 </Button>
               </div>
             </form>
-          </div>
+          </Card>
         </div>
       ) : null}
 
       {showUncheckModal && nodeForUncheckConfirmation ? (
         <div className={styles["home-page__modal-overlay"]}>
-          <div className={styles["home-page__modal-card"]}>
+          <Card className={styles["home-page__modal-card"]}>
             <h3 className={styles["home-page__modal-title"]}>Desmarcar ítem padre</h3>
             <p className={styles["home-page__modal-text"]}>
               Vas a desmarcar <strong>{nodeForUncheckConfirmation.title}</strong> y todos sus
@@ -444,13 +445,13 @@ export default async function Home({ searchParams }: PageProps) {
                 </Button>
               </form>
             </div>
-          </div>
+          </Card>
         </div>
       ) : null}
 
       {confirmId && nodeForConfirmation ? (
         <div className={styles["home-page__modal-overlay"]}>
-          <div className={styles["home-page__modal-card"]}>
+          <Card className={styles["home-page__modal-card"]}>
             <h3 className={styles["home-page__modal-title"]}>Completar ítem padre</h3>
             <p className={styles["home-page__modal-text"]}>
               Vas a completar <strong>{nodeForConfirmation.title}</strong> y todos sus descendientes.
@@ -476,7 +477,7 @@ export default async function Home({ searchParams }: PageProps) {
                 </Button>
               </form>
             </div>
-          </div>
+          </Card>
         </div>
       ) : null}
     </div>

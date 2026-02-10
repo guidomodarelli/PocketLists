@@ -1,11 +1,11 @@
 @reference "tailwindcss";
 
 .error-page {
-  @apply min-h-screen bg-gradient-to-b from-slate-100 via-slate-50 to-white px-4 py-8;
+  @apply min-h-screen bg-linear-to-b from-slate-100 via-slate-50 to-white px-4 py-8;
 }
 
 .error-page__card {
-  @apply mx-auto w-full max-w-4xl rounded-2xl border border-rose-200 bg-rose-50/70 p-6 shadow-xl shadow-slate-200/70;
+  @apply mx-auto w-full max-w-4xl gap-0 rounded-2xl border border-rose-200 bg-rose-50/70 p-6 shadow-xl shadow-slate-200/70;
 }
 
 .error-page__title {
