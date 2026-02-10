@@ -214,7 +214,9 @@ describe("TreeList", () => {
     fireEvent.click(screen.getByLabelText("Abrir acciones de Título original"));
     fireEvent.click(screen.getByLabelText("Editar Título original"));
 
-    expect(screen.getByDisplayValue("Título original")).toBeInTheDocument();
+    const input = screen.getByDisplayValue("Título original");
+    expect(input).toBeInTheDocument();
+    expect(input).toHaveFocus();
     expect(screen.getByRole("button", { name: "Guardar" })).toBeInTheDocument();
   });
 });

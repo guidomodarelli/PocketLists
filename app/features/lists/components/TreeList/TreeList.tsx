@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MoreVertical, Pencil, Trash2 } from "lucide-react";
 import {
   confirmParentAction,
@@ -63,6 +63,26 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
   const [parentModalAction, setParentModalAction] = useState<ParentModalAction>(null);
   const [deleteModalAction, setDeleteModalAction] = useState<DeleteModalAction>(null);
   const [editingItem, setEditingItem] = useState<{ id: string; title: string } | null>(null);
+  const editInputRef = useRef<HTMLInputElement | null>(null);
+  const editingItemId = editingItem?.id;
+
+  useEffect(() => {
+    if (!editingItemId) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      const input = editInputRef.current;
+      if (!input) {
+        return;
+      }
+      input.focus();
+      const end = input.value.length;
+      input.setSelectionRange(end, end);
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [editingItemId]);
 
   if (nodes.length === 0 && depth === 0) {
     return <div className={styles["tree-list__empty"]}>No hay ítems para mostrar en esta vista.</div>;
@@ -173,6 +193,7 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
                         <input type="hidden" name="id" value={node.id} />
                         <InputGroup className={styles["tree-list__edit-input-group"]}>
                           <InputGroupInput
+                            ref={editInputRef}
                             name="title"
                             value={editingItem.title}
                             onChange={(event) => {
@@ -230,11 +251,23 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
                           <MoreVertical className={styles["tree-list__actions-trigger-icon"]} />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
+                      <DropdownMenuContent
+                        align="end"
+                        onCloseAutoFocus={(event) => event.preventDefault()}
+                      >
                         <DropdownMenuItem
                           aria-label={`Editar ${node.title}`}
                           onSelect={() => {
                             setEditingItem({ id: node.id, title: node.title });
+                            window.requestAnimationFrame(() => {
+                              const input = editInputRef.current;
+                              if (!input) {
+                                return;
+                              }
+                              input.focus();
+                              const end = input.value.length;
+                              input.setSelectionRange(end, end);
+                            });
                           }}
                         >
                           <Pencil className={styles["tree-list__edit-icon"]} />
