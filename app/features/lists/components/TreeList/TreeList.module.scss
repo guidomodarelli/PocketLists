@@ -13,7 +13,7 @@
 }
 
 .tree-list__row {
-  @apply flex items-start gap-3 rounded-lg bg-white px-2 py-1.5 shadow-sm transition;
+  @apply flex items-center gap-3 rounded-lg bg-white px-2 py-1.5 shadow-sm transition;
 }
 
 .tree-list__row--context {
@@ -25,11 +25,11 @@
 }
 
 .tree-list__confirm-trigger {
-  @apply mt-1 inline-flex;
+  @apply inline-flex;
 }
 
 .tree-list__toggle-form {
-  @apply mt-1 inline-flex border-none bg-transparent p-0 shadow-none;
+  @apply inline-flex border-none bg-transparent p-0 shadow-none;
 }
 
 .tree-list__checkbox {
