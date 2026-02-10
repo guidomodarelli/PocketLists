@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { Button } from "@/components/ui/button";
 import styles from "./error.module.scss";
 
 type ErrorProps = {
@@ -20,13 +21,13 @@ export default function Error({ error, reset }: ErrorProps) {
         <p className={styles["error-page__description"]}>
           Volvé a intentarlo o recargá la página si el problema persiste.
         </p>
-        <button
+        <Button
           type="button"
           onClick={reset}
           className={styles["error-page__button"]}
         >
           Reintentar
-        </button>
+        </Button>
       </div>
     </div>
   );

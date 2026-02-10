@@ -6,6 +6,7 @@ import ParentSelector from "@/app/features/lists/components/ParentSelector/Paren
 import type { ApiError, ItemNode, ListsResponse } from "@/app/features/lists/types";
 import { buildVisibleTree, buildParentOptions, countByStatus, findNode } from "@/app/features/lists/tree";
 import { confirmParentAction, createItemAction, resetCompletedAction } from "@/app/features/lists/actions";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import styles from "./page.module.scss";
 
@@ -178,12 +179,12 @@ export default async function Home({ searchParams }: PageProps) {
                 helpText="Opcional. Si no elegís padre, se agrega como raíz."
               />
               <div className={styles["home-page__form-actions"]}>
-                <button
+                <Button
                   type="submit"
                   className={styles["home-page__submit-button"]}
                 >
                   Agregar
-                </button>
+                </Button>
               </div>
             </form>
           </div>
@@ -258,12 +259,12 @@ export default async function Home({ searchParams }: PageProps) {
                 helpText="Opcional. Si no elegís padre, se agrega como raíz."
               />
               <div className={styles["home-page__form-actions"]}>
-                <button
+                <Button
                   type="submit"
                   className={styles["home-page__submit-button"]}
                 >
                   Agregar
-                </button>
+                </Button>
               </div>
             </form>
           </div>
@@ -342,12 +343,12 @@ export default async function Home({ searchParams }: PageProps) {
                 Cancelar
               </Link>
               <form action={resetCompletedAction}>
-                <button
+                <Button
                   type="submit"
                   className={styles["home-page__modal-button"]}
                 >
                   Confirmar y desmarcar
-                </button>
+                </Button>
               </form>
             </div>
           </div>
@@ -383,12 +384,12 @@ export default async function Home({ searchParams }: PageProps) {
                 >
                   Cancelar
                 </Link>
-                <button
+                <Button
                   type="submit"
                   className={styles["home-page__modal-button"]}
                 >
                   Agregar hijo
-                </button>
+                </Button>
               </div>
             </form>
           </div>
@@ -412,7 +413,7 @@ export default async function Home({ searchParams }: PageProps) {
               </Link>
               <form action={confirmParentAction}>
                 <input type="hidden" name="id" value={nodeForConfirmation.id} />
-                <button
+                <Button
                   type="submit"
                   className={cn(
                     styles["home-page__modal-button"],
@@ -420,7 +421,7 @@ export default async function Home({ searchParams }: PageProps) {
                   )}
                 >
                   Confirmar y completar todo
-                </button>
+                </Button>
               </form>
             </div>
           </div>
