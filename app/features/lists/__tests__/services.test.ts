@@ -1,6 +1,7 @@
 import {
   completeParent,
   createItem,
+  deleteItem,
   getLists,
   getNodeById,
   resetCompletedItems,
@@ -94,6 +95,28 @@ describe("services", () => {
 
   test("createItem retorna null cuando parentId no existe", () => {
     const result = createItem("Nodo huérfano", "missing-parent");
+    expect(result).toBeNull();
+  });
+
+  test("deleteItem elimina una hoja existente", () => {
+    const updated = deleteItem("book");
+    const removed = getNodeById("book");
+
+    expect(updated).not.toBeNull();
+    expect(removed).toBeUndefined();
+  });
+
+  test("deleteItem elimina un parent junto a sus descendientes", () => {
+    const updated = deleteItem("travel-day");
+
+    expect(updated).not.toBeNull();
+    expect(getNodeById("travel-day")).toBeUndefined();
+    expect(getNodeById("hygiene-kit")).toBeUndefined();
+    expect(getNodeById("toothbrush")).toBeUndefined();
+  });
+
+  test("deleteItem retorna null cuando el id no existe", () => {
+    const result = deleteItem("missing-node");
     expect(result).toBeNull();
   });
 });

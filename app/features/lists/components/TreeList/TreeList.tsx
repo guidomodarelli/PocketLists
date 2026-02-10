@@ -1,7 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { confirmParentAction, confirmUncheckParentAction, toggleItemAction } from "../../actions";
+import { Trash2 } from "lucide-react";
+import {
+  confirmParentAction,
+  confirmUncheckParentAction,
+  deleteItemAction,
+  toggleItemAction,
+} from "../../actions";
 import Link from "../Link/Link";
 import type { TreeMode, VisibleNode } from "../../types";
 import {
@@ -32,14 +38,24 @@ type ParentModalAction =
     }
   | null;
 
+type DeleteModalAction =
+  | {
+      id: string;
+      title: string;
+      hasChildren: boolean;
+    }
+  | null;
+
 export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
   const [parentModalAction, setParentModalAction] = useState<ParentModalAction>(null);
+  const [deleteModalAction, setDeleteModalAction] = useState<DeleteModalAction>(null);
 
   if (nodes.length === 0 && depth === 0) {
     return <div className={styles["tree-list__empty"]}>No hay ítems para mostrar en esta vista.</div>;
   }
 
   const closeParentModal = () => setParentModalAction(null);
+  const closeDeleteModal = () => setDeleteModalAction(null);
 
   const parentAction =
     parentModalAction?.intent === "complete" ? confirmParentAction : confirmUncheckParentAction;
@@ -149,13 +165,29 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
                       <p className={styles["tree-list__context-label"]}>Contexto de ruta (pendiente)</p>
                     ) : null}
                   </div>
-                  <Link
-                    href={addChildLink}
-                    aria-label={`Agregar hijo a ${node.title}`}
-                    className={styles["tree-list__add-child-link"]}
-                  >
-                    +
-                  </Link>
+                  <div className={styles["tree-list__actions"]}>
+                    <Link
+                      href={addChildLink}
+                      aria-label={`Agregar hijo a ${node.title}`}
+                      className={styles["tree-list__add-child-link"]}
+                    >
+                      +
+                    </Link>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      aria-label={`Eliminar ${node.title}`}
+                      className={styles["tree-list__delete-button"]}
+                      onClick={() =>
+                        setDeleteModalAction({
+                          id: node.id,
+                          title: node.title,
+                          hasChildren: node.children.length > 0,
+                        })}
+                    >
+                      <Trash2 className={styles["tree-list__delete-icon"]} />
+                    </Button>
+                  </div>
                 </div>
               </div>
               {node.children.length > 0 ? (
@@ -206,6 +238,49 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
                   {parentModalAction.intent === "complete"
                     ? "Confirmar y completar todo"
                     : "Confirmar y desmarcar"}
+                </Button>
+              </form>
+            ) : null}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(deleteModalAction)}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            closeDeleteModal();
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Eliminar ítem</DialogTitle>
+            <DialogDescription>
+              {deleteModalAction ? (
+                deleteModalAction.hasChildren ? (
+                  <>
+                    Se eliminará el ítem <strong>{deleteModalAction.title}</strong> y también se
+                    eliminarán todos sus descendientes. Esta acción no se puede deshacer.
+                  </>
+                ) : (
+                  <>
+                    Se eliminará el ítem <strong>{deleteModalAction.title}</strong>. Esta acción no
+                    se puede deshacer.
+                  </>
+                )
+              ) : null}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Cancelar</Button>
+            </DialogClose>
+            {deleteModalAction ? (
+              <form action={deleteItemAction}>
+                <input type="hidden" name="id" value={deleteModalAction.id} />
+                <Button type="submit" variant="destructive">
+                  Confirmar eliminación
                 </Button>
               </form>
             ) : null}

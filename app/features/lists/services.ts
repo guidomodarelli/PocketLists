@@ -29,6 +29,29 @@ function getStoreItems(): ItemNode[] {
   return readStore().items;
 }
 
+function removeNodeFromTree(items: ItemNode[], id: string): [ItemNode[], boolean] {
+  let changed = false;
+  const result: ItemNode[] = [];
+
+  for (const item of items) {
+    if (item.id === id) {
+      changed = true;
+      continue;
+    }
+
+    const [children, childChanged] = removeNodeFromTree(item.children, id);
+    if (childChanged) {
+      changed = true;
+      result.push({ ...item, children });
+      continue;
+    }
+
+    result.push(item);
+  }
+
+  return [result, changed];
+}
+
 export function getLists(): ItemNode[] {
   return getStoreItems();
 }
@@ -93,6 +116,17 @@ export function createItem(title: string, parentId?: string): ItemNode[] | null 
   }));
 
   if (updated === items) {
+    return null;
+  }
+
+  const normalized = normalizeTree(updated);
+  writeStore(normalized);
+  return normalized;
+}
+
+export function deleteItem(id: string): ItemNode[] | null {
+  const [updated, changed] = removeNodeFromTree(getStoreItems(), id);
+  if (!changed) {
     return null;
   }
 

@@ -2,6 +2,7 @@ import {
   confirmParentAction,
   confirmUncheckParentAction,
   createItemAction,
+  deleteItemAction,
   resetCompletedAction,
   toggleItemAction,
 } from "../actions";
@@ -23,6 +24,7 @@ jest.mock("next/navigation", () => ({
 jest.mock("../services", () => ({
   completeParent: jest.fn(),
   createItem: jest.fn(),
+  deleteItem: jest.fn(),
   getNodeById: jest.fn(),
   resetCompletedItems: jest.fn(),
   toggleItem: jest.fn(),
@@ -154,6 +156,33 @@ describe("actions", () => {
 
     await expect(createItemAction(createFormData({ title: "Nuevo" }))).rejects.toThrow("NEXT_REDIRECT:/");
     expect(servicesMock.createItem).toHaveBeenCalledWith("Nuevo", undefined);
+    expect(revalidateTagMock).toHaveBeenCalledWith("lists", "max");
+    expect(redirectMock).toHaveBeenCalledWith("/");
+  });
+
+  test("deleteItemAction: redirige a error cuando no existe el nodo", async () => {
+    servicesMock.getNodeById.mockReturnValue(undefined);
+
+    await expect(deleteItemAction(createFormData({ id: "missing" }))).rejects.toThrow(
+      "NEXT_REDIRECT:/?error=delete"
+    );
+  });
+
+  test("deleteItemAction: redirige a error cuando delete falla", async () => {
+    servicesMock.getNodeById.mockReturnValue({ id: "ok", children: [] });
+    servicesMock.deleteItem.mockReturnValue(null);
+
+    await expect(deleteItemAction(createFormData({ id: "ok" }))).rejects.toThrow(
+      "NEXT_REDIRECT:/?error=delete"
+    );
+  });
+
+  test("deleteItemAction: elimina + revalida + redirige en happy path", async () => {
+    servicesMock.getNodeById.mockReturnValue({ id: "ok", children: [] });
+    servicesMock.deleteItem.mockReturnValue([{ id: "remaining" }]);
+
+    await expect(deleteItemAction(createFormData({ id: "ok" }))).rejects.toThrow("NEXT_REDIRECT:/");
+    expect(servicesMock.deleteItem).toHaveBeenCalledWith("ok");
     expect(revalidateTagMock).toHaveBeenCalledWith("lists", "max");
     expect(redirectMock).toHaveBeenCalledWith("/");
   });

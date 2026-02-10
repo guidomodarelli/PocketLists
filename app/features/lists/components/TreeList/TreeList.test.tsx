@@ -6,6 +6,7 @@ import TreeList from "./TreeList";
 jest.mock("../../actions", () => ({
   confirmParentAction: jest.fn(),
   confirmUncheckParentAction: jest.fn(),
+  deleteItemAction: jest.fn(),
   toggleItemAction: jest.fn(),
 }));
 
@@ -151,5 +152,29 @@ describe("TreeList", () => {
     expect(requestSubmitSpy).toHaveBeenCalledTimes(1);
     expect(screen.queryByText("Completar ítem padre")).not.toBeInTheDocument();
     requestSubmitSpy.mockRestore();
+  });
+
+  test("abre dialog de eliminación para ítem hoja", () => {
+    const leaf = createNode({ id: "leaf-delete", title: "Hoja para borrar", children: [] });
+
+    render(<TreeList nodes={[leaf]} mode="pending" />);
+    fireEvent.click(screen.getByLabelText("Eliminar Hoja para borrar"));
+
+    expect(screen.getByText("Eliminar ítem")).toBeInTheDocument();
+    expect(screen.getByText(/Se eliminará el ítem/)).toBeInTheDocument();
+  });
+
+  test("abre dialog de eliminación para parent y aclara descendientes", () => {
+    const parent = createNode({
+      id: "parent-delete",
+      title: "Parent para borrar",
+      children: [createNode({ id: "child", title: "Child" })],
+    });
+
+    render(<TreeList nodes={[parent]} mode="pending" />);
+    fireEvent.click(screen.getByLabelText("Eliminar Parent para borrar"));
+
+    expect(screen.getByText("Eliminar ítem")).toBeInTheDocument();
+    expect(screen.getByText(/también se eliminarán todos sus descendientes/)).toBeInTheDocument();
   });
 });

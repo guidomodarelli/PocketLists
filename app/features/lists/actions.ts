@@ -2,7 +2,15 @@
 
 import { revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
-import { completeParent, createItem, getNodeById, resetCompletedItems, toggleItem, uncheckParent } from "./services";
+import {
+  completeParent,
+  createItem,
+  deleteItem,
+  getNodeById,
+  resetCompletedItems,
+  toggleItem,
+  uncheckParent,
+} from "./services";
 
 function readRequiredString(formData: FormData, key: string): string {
   const value = formData.get(key);
@@ -93,6 +101,23 @@ export async function createItemAction(formData: FormData): Promise<void> {
   const result = createItem(title, parentId);
   if (!result) {
     redirect("/?error=add");
+  }
+
+  revalidateTag("lists", "max");
+  redirect("/");
+}
+
+export async function deleteItemAction(formData: FormData): Promise<void> {
+  const id = readRequiredString(formData, "id");
+  const currentNode = getNodeById(id);
+
+  if (!currentNode) {
+    redirect("/?error=delete");
+  }
+
+  const result = deleteItem(id);
+  if (!result) {
+    redirect("/?error=delete");
   }
 
   revalidateTag("lists", "max");

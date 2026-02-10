@@ -63,3 +63,15 @@
 .tree-list__add-child-link {
   @apply ml-auto inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-900;
 }
+
+.tree-list__actions {
+  @apply ml-auto flex items-center gap-2;
+}
+
+.tree-list__delete-button {
+  @apply h-7 w-7 rounded-full p-0 text-red-600 hover:bg-red-50 hover:text-red-700;
+}
+
+.tree-list__delete-icon {
+  @apply h-4 w-4;
+}
