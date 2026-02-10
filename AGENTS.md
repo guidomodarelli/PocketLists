@@ -226,7 +226,22 @@ El proposito de esta guia es establecer un estandar para las contribuciones. Est
 
 ### Lineamientos de idioma
 
-Usamos **Spanish** como lenguaje principal. El codigo fuente, comentarios, documentacion, mensajes de commit, comentarios de revision y cualquier otro tipo de contribucion deben escribirse en Spanish. Hacemos esto para ser consistentes en todo el proyecto y ser considerados con quienes no tienen el mismo idioma nativo.
+Usamos **English** como idioma por defecto para todo el proyecto.
+
+Excepciones permitidas (y unicas):
+
+- Archivos `*.md`.
+- Texto mostrado al usuario final en pantalla (copy de UI, labels, placeholders, mensajes de validacion y feedback visible para usuario).
+
+Todo lo demas debe estar en **English**, incluyendo:
+
+- Nombres de carpetas, archivos y rutas.
+- Nombres de componentes, funciones, variables, clases, tipos, interfaces, enums y constantes.
+- Nombres de clases CSS/SCSS y selectores BEM.
+- Comentarios tecnicos, logs y mensajes internos no visibles para usuario.
+- Mensajes de commit, PRs y comentarios de revision.
+
+Si hay duda, la regla por defecto es: **English**.
 
 ### Lineamientos de comentarios :speech_balloon:
 
