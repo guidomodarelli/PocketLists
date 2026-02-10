@@ -79,6 +79,13 @@ function resolveActionError(errorParam?: string): { title: string; description: 
     };
   }
 
+  if (errorParam === "edit") {
+    return {
+      title: "No pudimos editar el ítem.",
+      description: "Reintentá la edición o recargá la página para sincronizar los datos.",
+    };
+  }
+
   return {
     title: "Ocurrió un error inesperado.",
     description: "Volvé a intentarlo en unos segundos.",

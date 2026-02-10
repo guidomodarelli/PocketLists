@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { MoreVertical, Trash2 } from "lucide-react";
+import { MoreVertical, Pencil, Trash2 } from "lucide-react";
 import {
   confirmParentAction,
   confirmUncheckParentAction,
   deleteItemAction,
+  editItemTitleAction,
   toggleItemAction,
 } from "../../actions";
 import Link from "../Link/Link";
@@ -27,6 +28,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group";
 import { cn } from "@/lib/utils";
 import styles from "./TreeList.module.scss";
 
@@ -55,6 +62,7 @@ type DeleteModalAction =
 export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
   const [parentModalAction, setParentModalAction] = useState<ParentModalAction>(null);
   const [deleteModalAction, setDeleteModalAction] = useState<DeleteModalAction>(null);
+  const [editingItem, setEditingItem] = useState<{ id: string; title: string } | null>(null);
 
   if (nodes.length === 0 && depth === 0) {
     return <div className={styles["tree-list__empty"]}>No hay ítems para mostrar en esta vista.</div>;
@@ -89,6 +97,7 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
               ? "indeterminate"
               : false;
           const toggleFormId = `toggle-item-${node.id}`;
+          const isEditing = editingItem?.id === node.id;
 
           return (
             <li key={node.id}>
@@ -159,14 +168,45 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
                 )}
                 <div className={styles["tree-list__content"]}>
                   <div className={styles["tree-list__text-wrap"]}>
-                    <p
-                      className={cn(
-                        styles["tree-list__title"],
-                        node.completed && styles["tree-list__title--completed"],
-                      )}
-                    >
-                      {node.title}
-                    </p>
+                    {isEditing ? (
+                      <form action={editItemTitleAction} className={styles["tree-list__edit-form"]}>
+                        <input type="hidden" name="id" value={node.id} />
+                        <InputGroup className={styles["tree-list__edit-input-group"]}>
+                          <InputGroupInput
+                            name="title"
+                            value={editingItem.title}
+                            onChange={(event) => {
+                              setEditingItem((current) =>
+                                current && current.id === node.id
+                                  ? { ...current, title: event.target.value }
+                                  : current
+                              );
+                            }}
+                            className={styles["tree-list__edit-input"]}
+                            required
+                            autoFocus
+                          />
+                          <InputGroupAddon align="inline-end">
+                            <InputGroupButton
+                              type="submit"
+                              size="sm"
+                              className={styles["tree-list__edit-save"]}
+                            >
+                              Guardar
+                            </InputGroupButton>
+                          </InputGroupAddon>
+                        </InputGroup>
+                      </form>
+                    ) : (
+                      <p
+                        className={cn(
+                          styles["tree-list__title"],
+                          node.completed && styles["tree-list__title--completed"],
+                        )}
+                      >
+                        {node.title}
+                      </p>
+                    )}
                     {mode === "completed" && node.isContextOnly ? (
                       <p className={styles["tree-list__context-label"]}>Contexto de ruta (pendiente)</p>
                     ) : null}
@@ -191,6 +231,16 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          aria-label={`Editar ${node.title}`}
+                          onSelect={(event) => {
+                            event.preventDefault();
+                            setEditingItem({ id: node.id, title: node.title });
+                          }}
+                        >
+                          <Pencil className={styles["tree-list__edit-icon"]} />
+                          Editar ítem
+                        </DropdownMenuItem>
                         <DropdownMenuItem
                           variant="destructive"
                           aria-label={`Eliminar ${node.title}`}

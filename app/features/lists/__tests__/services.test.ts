@@ -7,6 +7,7 @@ import {
   resetCompletedItems,
   toggleItem,
   uncheckParent,
+  updateItemTitle,
 } from "../services";
 
 type GlobalStore = typeof globalThis & {
@@ -117,6 +118,19 @@ describe("services", () => {
 
   test("deleteItem retorna null cuando el id no existe", () => {
     const result = deleteItem("missing-node");
+    expect(result).toBeNull();
+  });
+
+  test("updateItemTitle actualiza el texto de un ítem existente", () => {
+    const updated = updateItemTitle("book", "Libro actualizado");
+    const node = getNodeById("book");
+
+    expect(updated).not.toBeNull();
+    expect(node?.title).toBe("Libro actualizado");
+  });
+
+  test("updateItemTitle retorna null cuando el id no existe", () => {
+    const result = updateItemTitle("missing-node", "Nuevo título");
     expect(result).toBeNull();
   });
 });

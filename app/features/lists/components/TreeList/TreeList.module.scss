@@ -48,6 +48,22 @@
   @apply flex-1;
 }
 
+.tree-list__edit-form {
+  @apply w-full;
+}
+
+.tree-list__edit-input-group {
+  @apply w-full;
+}
+
+.tree-list__edit-input {
+  @apply h-8 text-sm;
+}
+
+.tree-list__edit-save {
+  @apply h-7 px-2.5 text-xs;
+}
+
 .tree-list__title {
   @apply text-sm font-medium text-slate-900;
 }
@@ -77,5 +93,9 @@
 }
 
 .tree-list__delete-icon {
+  @apply h-4 w-4;
+}
+
+.tree-list__edit-icon {
   @apply h-4 w-4;
 }

@@ -134,3 +134,19 @@ export function deleteItem(id: string): ItemNode[] | null {
   writeStore(normalized);
   return normalized;
 }
+
+export function updateItemTitle(id: string, title: string): ItemNode[] | null {
+  const items = getStoreItems();
+  const updated = updateNodeInTree(items, id, (node) => ({
+    ...node,
+    title,
+  }));
+
+  if (updated === items) {
+    return null;
+  }
+
+  const normalized = normalizeTree(updated);
+  writeStore(normalized);
+  return normalized;
+}

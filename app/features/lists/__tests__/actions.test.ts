@@ -1,4 +1,5 @@
 import {
+  editItemTitleAction,
   confirmParentAction,
   confirmUncheckParentAction,
   createItemAction,
@@ -29,6 +30,7 @@ jest.mock("../services", () => ({
   resetCompletedItems: jest.fn(),
   toggleItem: jest.fn(),
   uncheckParent: jest.fn(),
+  updateItemTitle: jest.fn(),
 }));
 
 const servicesMock = jest.mocked(services);
@@ -183,6 +185,35 @@ describe("actions", () => {
 
     await expect(deleteItemAction(createFormData({ id: "ok" }))).rejects.toThrow("NEXT_REDIRECT:/");
     expect(servicesMock.deleteItem).toHaveBeenCalledWith("ok");
+    expect(revalidateTagMock).toHaveBeenCalledWith("lists", "max");
+    expect(redirectMock).toHaveBeenCalledWith("/");
+  });
+
+  test("editItemTitleAction: redirige a error cuando no existe el nodo", async () => {
+    servicesMock.getNodeById.mockReturnValue(undefined);
+
+    await expect(editItemTitleAction(createFormData({ id: "missing", title: "Nuevo título" }))).rejects.toThrow(
+      "NEXT_REDIRECT:/?error=edit"
+    );
+  });
+
+  test("editItemTitleAction: redirige a error cuando update falla", async () => {
+    servicesMock.getNodeById.mockReturnValue({ id: "ok", title: "Old", children: [] });
+    servicesMock.updateItemTitle.mockReturnValue(null);
+
+    await expect(editItemTitleAction(createFormData({ id: "ok", title: "Nuevo título" }))).rejects.toThrow(
+      "NEXT_REDIRECT:/?error=edit"
+    );
+  });
+
+  test("editItemTitleAction: actualiza + revalida + redirige en happy path", async () => {
+    servicesMock.getNodeById.mockReturnValue({ id: "ok", title: "Old", children: [] });
+    servicesMock.updateItemTitle.mockReturnValue([{ id: "ok", title: "Nuevo título" }]);
+
+    await expect(editItemTitleAction(createFormData({ id: "ok", title: "Nuevo título" }))).rejects.toThrow(
+      "NEXT_REDIRECT:/"
+    );
+    expect(servicesMock.updateItemTitle).toHaveBeenCalledWith("ok", "Nuevo título");
     expect(revalidateTagMock).toHaveBeenCalledWith("lists", "max");
     expect(redirectMock).toHaveBeenCalledWith("/");
   });

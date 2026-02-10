@@ -10,6 +10,7 @@ import {
   resetCompletedItems,
   toggleItem,
   uncheckParent,
+  updateItemTitle,
 } from "./services";
 
 function readRequiredString(formData: FormData, key: string): string {
@@ -118,6 +119,24 @@ export async function deleteItemAction(formData: FormData): Promise<void> {
   const result = deleteItem(id);
   if (!result) {
     redirect("/?error=delete");
+  }
+
+  revalidateTag("lists", "max");
+  redirect("/");
+}
+
+export async function editItemTitleAction(formData: FormData): Promise<void> {
+  const id = readRequiredString(formData, "id");
+  const title = readRequiredString(formData, "title");
+  const currentNode = getNodeById(id);
+
+  if (!currentNode) {
+    redirect("/?error=edit");
+  }
+
+  const result = updateItemTitle(id, title);
+  if (!result) {
+    redirect("/?error=edit");
   }
 
   revalidateTag("lists", "max");

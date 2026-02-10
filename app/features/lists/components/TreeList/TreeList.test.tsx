@@ -7,6 +7,7 @@ jest.mock("../../actions", () => ({
   confirmParentAction: jest.fn(),
   confirmUncheckParentAction: jest.fn(),
   deleteItemAction: jest.fn(),
+  editItemTitleAction: jest.fn(),
   toggleItemAction: jest.fn(),
 }));
 
@@ -204,5 +205,16 @@ describe("TreeList", () => {
 
     expect(screen.getByRole("heading", { name: "Eliminar ítem" })).toBeInTheDocument();
     expect(screen.getByText(/también se eliminarán todos sus descendientes/)).toBeInTheDocument();
+  });
+
+  test("permite editar inline desde el dropdown y muestra input con Guardar", () => {
+    const node = createNode({ id: "edit-node", title: "Título original", children: [] });
+
+    render(<TreeList nodes={[node]} mode="pending" />);
+    fireEvent.click(screen.getByLabelText("Abrir acciones de Título original"));
+    fireEvent.click(screen.getByLabelText("Editar Título original"));
+
+    expect(screen.getByDisplayValue("Título original")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Guardar" })).toBeInTheDocument();
   });
 });
