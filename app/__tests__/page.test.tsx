@@ -56,6 +56,27 @@ jest.mock("@/app/features/lists/components/ListTitleEditable/ListTitleEditable",
   ),
 }));
 
+jest.mock("@/app/features/lists/components/ResetCompletedDialog/ResetCompletedDialog", () => ({
+  __esModule: true,
+  default: ({
+    open,
+    dismissHref,
+    children,
+  }: {
+    open: boolean;
+    dismissHref: string;
+    children: ReactNode;
+  }) => (
+    <div
+      data-testid="reset-completed-dialog"
+      data-open={String(open)}
+      data-dismiss-href={dismissHref}
+    >
+      {open ? children : null}
+    </div>
+  ),
+}));
+
 jest.mock("@/components/ui/button", () => ({
   Button: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
     <button {...props}>{children}</button>
@@ -73,8 +94,27 @@ jest.mock("@/components/ui/card", () => ({
 }));
 
 jest.mock("@/components/ui/dialog", () => ({
-  Dialog: ({ children, open = true }: { children: ReactNode; open?: boolean }) =>
-    open ? <div data-testid="dialog">{children}</div> : null,
+  Dialog: ({
+    children,
+    open,
+    defaultOpen,
+  }: {
+    children: ReactNode;
+    open?: boolean;
+    defaultOpen?: boolean;
+  }) => {
+    const isOpen = open ?? defaultOpen ?? false;
+
+    return (
+      <div
+        data-testid="dialog"
+        data-open-prop={open === undefined ? "undefined" : String(open)}
+        data-default-open-prop={defaultOpen === undefined ? "undefined" : String(defaultOpen)}
+      >
+        {isOpen ? children : null}
+      </div>
+    );
+  },
   DialogContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   DialogDescription: ({ children }: { children: ReactNode }) => <p>{children}</p>,
   DialogFooter: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -184,6 +224,24 @@ describe("List page SSR", () => {
 
     expect(screen.getByRole("heading", { name: "Desmarcar completados" })).toBeInTheDocument();
     expect(screen.getByText("Vas a desmarcar todos los ítems completados. ¿Querés continuar?")).toBeInTheDocument();
+  });
+
+  test("usa wrapper de reset controlado por query param y href de cierre", async () => {
+    mockFetchResponse({
+      lists: [{ id: "list-1", title: "Lista 1" }],
+      activeList: {
+        id: "list-1",
+        title: "Lista 1",
+        items: [{ id: "completed-1", title: "Completado", completed: true, children: [] }],
+      },
+    });
+
+    const view = await ListPage({ params: { listId: "list-1" }, searchParams: { confirmReset: "true" } });
+    render(view);
+
+    const resetDialog = screen.getByTestId("reset-completed-dialog");
+    expect(resetDialog).toHaveAttribute("data-open", "true");
+    expect(resetDialog).toHaveAttribute("data-dismiss-href", "/lists/list-1");
   });
 
   test("muestra banner cuando confirm apunta a un ítem inexistente", async () => {

@@ -5,6 +5,7 @@ import Link from "@/app/features/lists/components/Link/Link";
 import AddRootItemButton from "@/app/features/lists/components/AddRootItemButton/AddRootItemButton";
 import CompletedItemsDialog from "@/app/features/lists/components/CompletedItemsDialog/CompletedItemsDialog";
 import ListTitleEditable from "@/app/features/lists/components/ListTitleEditable/ListTitleEditable";
+import ResetCompletedDialog from "@/app/features/lists/components/ResetCompletedDialog/ResetCompletedDialog";
 import type { ApiError, List, ListsResponse } from "@/app/features/lists/types";
 import { buildVisibleTree, countByStatus, findNode } from "@/app/features/lists/tree";
 import {
@@ -330,7 +331,7 @@ export default async function ListPage({ params, searchParams }: PageProps) {
       </main>
 
       {showResetModal ? (
-        <Dialog open>
+        <ResetCompletedDialog open={showResetModal} dismissHref={listPath}>
           <DialogContent className={styles["home-page__modal-card"]}>
             <DialogHeader>
               <DialogTitle className={styles["home-page__modal-title"]}>Desmarcar completados</DialogTitle>
@@ -356,7 +357,7 @@ export default async function ListPage({ params, searchParams }: PageProps) {
               </form>
             </DialogFooter>
           </DialogContent>
-        </Dialog>
+        </ResetCompletedDialog>
       ) : null}
 
       {showUncheckModal && nodeForUncheckConfirmation ? (
