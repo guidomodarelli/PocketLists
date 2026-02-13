@@ -13,11 +13,19 @@
 }
 
 .lists-sidebar__title-full {
-  @apply inline group-data-[collapsible=icon]:hidden;
+  @apply inline;
 }
 
 .lists-sidebar__title-short {
-  @apply hidden group-data-[collapsible=icon]:inline;
+  @apply hidden;
+}
+
+:global([data-collapsible="icon"]) .lists-sidebar__title-full {
+  @apply hidden;
+}
+
+:global([data-collapsible="icon"]) .lists-sidebar__title-short {
+  @apply inline;
 }
 
 .lists-sidebar__desktop-trigger {
