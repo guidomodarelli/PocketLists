@@ -10,7 +10,8 @@
     "cssVariables": true,
     "prefix": ""
   },
-  "iconLibrary": "lucide",
+  "iconLibrary": "hugeicons",
+  "menuAccent": "bold",
   "rtl": false,
   "aliases": {
     "components": "@/components",
