@@ -27,10 +27,28 @@ import {
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
+const SIDEBAR_STORAGE_KEY = SIDEBAR_COOKIE_NAME
 const SIDEBAR_WIDTH = "16rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
+
+function getStoredSidebarOpenState(): boolean | null {
+  if (typeof window === "undefined") {
+    return null
+  }
+
+  const storedOpenState = window.localStorage.getItem(SIDEBAR_STORAGE_KEY)
+  if (storedOpenState === "true") {
+    return true
+  }
+
+  if (storedOpenState === "false") {
+    return false
+  }
+
+  return null
+}
 
 type SidebarContextProps = {
   state: "expanded" | "collapsed"
@@ -82,11 +100,28 @@ function SidebarProvider({
         _setOpen(openState)
       }
 
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(openState))
+      }
+
       // This sets the cookie to keep the sidebar state.
       document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
     },
     [setOpenProp, open]
   )
+
+  React.useEffect(() => {
+    if (openProp !== undefined) {
+      return
+    }
+
+    const storedOpenState = getStoredSidebarOpenState()
+    if (storedOpenState === null) {
+      return
+    }
+
+    _setOpen(storedOpenState)
+  }, [openProp])
 
   // Helper to toggle the sidebar.
   const toggleSidebar = React.useCallback(() => {
