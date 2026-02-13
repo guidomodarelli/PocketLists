@@ -89,7 +89,10 @@ function SidebarProvider({
 
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
-  const [_open, _setOpen] = React.useState(defaultOpen)
+  const [_open, _setOpen] = React.useState(() => {
+    const storedOpenState = getStoredSidebarOpenState()
+    return storedOpenState ?? defaultOpen
+  })
   const open = openProp ?? _open
   const setOpen = React.useCallback(
     (value: boolean | ((value: boolean) => boolean)) => {
@@ -109,19 +112,6 @@ function SidebarProvider({
     },
     [setOpenProp, open]
   )
-
-  React.useEffect(() => {
-    if (openProp !== undefined) {
-      return
-    }
-
-    const storedOpenState = getStoredSidebarOpenState()
-    if (storedOpenState === null) {
-      return
-    }
-
-    _setOpen(storedOpenState)
-  }, [openProp])
 
   // Helper to toggle the sidebar.
   const toggleSidebar = React.useCallback(() => {

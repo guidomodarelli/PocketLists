@@ -59,15 +59,13 @@ describe("SidebarProvider localStorage persistence", () => {
     window.localStorage.clear()
   })
 
-  test("restores collapsed state from localStorage on mount", async () => {
+  test("renders collapsed immediately when localStorage says closed", () => {
     window.localStorage.setItem("sidebar_state", "false")
 
     render(<SidebarStateHarness defaultOpen={true} />)
 
-    await waitFor(() => {
-      expect(screen.getByTestId("sidebar-state")).toHaveTextContent("collapsed")
-      expect(screen.getByTestId("sidebar-open")).toHaveTextContent("false")
-    })
+    expect(screen.getByTestId("sidebar-state")).toHaveTextContent("collapsed")
+    expect(screen.getByTestId("sidebar-open")).toHaveTextContent("false")
   })
 
   test("updates localStorage when user toggles sidebar state", () => {
