@@ -73,6 +73,11 @@ jest.mock("@/components/ui/sidebar", () => ({
     children: ReactNode;
     isActive?: boolean;
   }) => <div data-active={String(Boolean(isActive))}>{children}</div>,
+  SidebarTrigger: ({ ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button type="button" {...props}>
+      Toggle Sidebar
+    </button>
+  ),
   SidebarRail: () => <div data-testid="sidebar-rail" />,
 }));
 
@@ -112,6 +117,34 @@ describe("ListsSidebar", () => {
     const actionsButton = screen.getByRole("button", { name: "Abrir acciones de Lista 1" });
     expect(actionsButton).toBeInTheDocument();
     expect(actionsButton).toHaveAttribute("data-show-on-hover", "true");
+  });
+
+  test("renderiza botón para colapsar o expandir sidebar en desktop", () => {
+    render(
+      <ListsSidebar
+        lists={[
+          { id: "list-1", title: "Lista 1" },
+          { id: "list-2", title: "Lista 2" },
+        ]}
+      />
+    );
+
+    const collapseButton = screen.getByRole("button", { name: "Colapsar o expandir sidebar" });
+    expect(collapseButton).toBeInTheDocument();
+    expect(collapseButton).toHaveAttribute("title", "Colapsar o expandir sidebar");
+  });
+
+  test("incluye abreviatura del nombre para estado colapsado", () => {
+    render(
+      <ListsSidebar
+        lists={[
+          { id: "list-1", title: "Lista 1" },
+          { id: "list-2", title: "Lista 2" },
+        ]}
+      />
+    );
+
+    expect(screen.getByText("PL")).toBeInTheDocument();
   });
 
   test("muestra placeholder cuando la lista no tiene nombre", () => {
@@ -259,7 +292,7 @@ describe("ListsSidebar", () => {
     expect(screen.getByLabelText("Editar nombre de Lista 1")).toBeInTheDocument();
   });
 
-  test("eliminar lista desde el menú envía el formulario de borrado", () => {
+  test("eliminar lista abre confirmación y recién envía al confirmar", () => {
     const requestSubmitSpy = jest.spyOn(HTMLFormElement.prototype, "requestSubmit");
 
     render(
@@ -272,6 +305,16 @@ describe("ListsSidebar", () => {
     );
 
     fireEvent.click(screen.getByLabelText("Eliminar Lista 1"));
+    expect(screen.getByText("¿Eliminar lista?")).toBeInTheDocument();
+    expect(screen.getByText('Esta acción eliminará "Lista 1" de forma permanente.')).toBeInTheDocument();
+    expect(requestSubmitSpy).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    expect(screen.queryByText("¿Eliminar lista?")).not.toBeInTheDocument();
+    expect(requestSubmitSpy).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByLabelText("Eliminar Lista 1"));
+    fireEvent.click(screen.getByRole("button", { name: "Eliminar" }));
     expect(requestSubmitSpy).toHaveBeenCalledTimes(1);
     requestSubmitSpy.mockRestore();
   });

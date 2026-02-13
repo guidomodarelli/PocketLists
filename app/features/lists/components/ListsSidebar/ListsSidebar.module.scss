@@ -4,8 +4,24 @@
   @apply p-3;
 }
 
+.lists-sidebar__header-row {
+  @apply flex items-center justify-between gap-2;
+}
+
 .lists-sidebar__title {
   @apply text-sm font-semibold text-slate-900;
+}
+
+.lists-sidebar__title-full {
+  @apply inline group-data-[collapsible=icon]:hidden;
+}
+
+.lists-sidebar__title-short {
+  @apply hidden group-data-[collapsible=icon]:inline;
+}
+
+.lists-sidebar__desktop-trigger {
+  @apply hidden text-slate-500 md:inline-flex md:h-7 md:w-7;
 }
 
 .lists-sidebar__group-header {
