@@ -1,4 +1,4 @@
-@reference "tailwindcss";
+@reference "../../../../globals.css";
 
 .lists-sidebar__header {
   @apply overflow-visible p-3;
@@ -9,7 +9,7 @@
 }
 
 .lists-sidebar__title {
-  @apply text-sm font-semibold text-slate-900;
+  @apply text-sm font-semibold text-foreground;
 }
 
 .lists-sidebar__title-full {
@@ -29,11 +29,11 @@
 }
 
 .lists-sidebar__desktop-trigger {
-  @apply hidden text-slate-500 md:inline-flex md:h-7 md:w-7;
+  @apply hidden text-muted-foreground md:inline-flex md:h-7 md:w-7;
 }
 
 :global([data-collapsible="icon"]) .lists-sidebar__desktop-trigger {
-  @apply md:inline-flex md:h-7 md:w-7 md:items-center md:justify-center md:rounded-full md:border md:border-slate-200 md:bg-white md:shadow-sm;
+  @apply md:inline-flex md:h-7 md:w-7 md:items-center md:justify-center md:rounded-full md:border md:border-border md:bg-card md:shadow-xs;
 }
 
 :global([data-side="left"][data-collapsible="icon"]) .lists-sidebar__desktop-trigger {
@@ -57,7 +57,7 @@
 }
 
 .lists-sidebar__item-title--placeholder {
-  @apply text-slate-500 opacity-65;
+  @apply text-muted-foreground opacity-65;
 }
 
 .lists-sidebar__item-button {
@@ -69,7 +69,7 @@
 }
 
 .lists-sidebar__actions-trigger {
-  @apply text-slate-500;
+  @apply text-muted-foreground;
 }
 
 .lists-sidebar__actions-icon {
@@ -85,11 +85,11 @@
 }
 
 .lists-sidebar__item-title-input {
-  @apply w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-sm outline-none ring-0;
+  @apply w-full rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground outline-none ring-0;
 }
 
 .lists-sidebar__item-title-input:focus {
-  @apply border-slate-400 ring-2 ring-slate-200;
+  @apply border-ring ring-2 ring-ring/40;
 }
 
 .lists-sidebar__delete-form {
@@ -101,7 +101,7 @@
 }
 
 .lists-sidebar__new-list-button {
-  @apply h-6 gap-1 rounded-md px-1.5 text-slate-500 hover:text-slate-700;
+  @apply h-6 gap-1 rounded-md px-1.5 text-muted-foreground hover:text-foreground;
 }
 
 .lists-sidebar__new-list-icon {

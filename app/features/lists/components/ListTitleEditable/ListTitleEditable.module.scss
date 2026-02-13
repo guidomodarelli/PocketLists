@@ -1,4 +1,4 @@
-@reference "tailwindcss";
+@reference "../../../../globals.css";
 
 .list-title-editable {
   @apply m-0;
@@ -15,15 +15,15 @@
 }
 
 .list-title-editable__trigger--placeholder {
-  @apply text-slate-500 opacity-65;
+  @apply text-muted-foreground opacity-65;
 }
 
 .list-title-editable__input {
-  @apply w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-inherit outline-none ring-0;
+  @apply w-full rounded-md border border-input bg-background px-2 py-1 text-inherit outline-none ring-0;
   font: inherit;
   letter-spacing: inherit;
 }
 
 .list-title-editable__input:focus {
-  @apply border-slate-400 ring-2 ring-slate-200;
+  @apply border-ring ring-2 ring-ring/40;
 }

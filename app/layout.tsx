@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist_Mono, Outfit } from "next/font/google";
 import "./globals.css";
 import styles from "./layout.module.scss";
+import ThemeToggle from "@/components/shared/ThemeToggle/ThemeToggle";
 
 const outfitSans = Outfit({
   variable: "--font-outfit",
@@ -24,10 +25,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es">
+    <html lang="es" className="dark">
       <body
         className={`${outfitSans.variable} ${geistMono.variable} ${styles["root-layout__body"]}`}
       >
+        <ThemeToggle />
         {children}
       </body>
     </html>
