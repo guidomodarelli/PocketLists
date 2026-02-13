@@ -288,7 +288,6 @@ Como regla general de lo que no se debe comentar, evita:
 - Para una nueva feature o un cambio en una feature existente, el nombre de la branch debe comenzar con `feature/`
 - Luego de la categoria, el nombre debe tener como maximo tres palabras, en minusculas y separadas por guiones.
 - Ejemplo: `feature/debounce`, `fix/question-box-height`
-  > Para mas informacion, ver [gitflow](https://furydocs.io/release-process/latest/guide/#/lang-es/workflows/02_gitflow)
 
 #### Diagrama GitFlow
 
