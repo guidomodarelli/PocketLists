@@ -28,9 +28,10 @@ export default function CompletedItemsDialog({
   listId,
 }: CompletedItemsDialogProps) {
   const listPath = `/lists/${encodeURIComponent(listId)}`;
+  const dialogStateKey = canResetCompleted ? "with-completed-items" : "without-completed-items";
 
   return (
-    <Dialog>
+    <Dialog key={dialogStateKey}>
       <DialogTrigger asChild>
         <Button type="button" variant="outline" className={styles["completed-items-dialog__trigger"]}>
           Ver completados
