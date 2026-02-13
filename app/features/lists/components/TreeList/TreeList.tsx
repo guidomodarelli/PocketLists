@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   confirmParentAction,
   confirmUncheckParentAction,
@@ -60,12 +61,15 @@ type DeleteModalAction =
     }
   | null;
 
+const COMPLETION_ANIMATION_MS = 450;
+
 export default function TreeList({ nodes, mode, listId, depth = 0 }: TreeListProps) {
   const [parentModalAction, setParentModalAction] = useState<ParentModalAction>(null);
   const [deleteModalAction, setDeleteModalAction] = useState<DeleteModalAction>(null);
   const [editingItem, setEditingItem] = useState<{ id: string; title: string } | null>(null);
   const [draftRootTitle, setDraftRootTitle] = useState<string | null>(null);
   const [draftChild, setDraftChild] = useState<{ parentId: string; title: string } | null>(null);
+  const [completionAnimations, setCompletionAnimations] = useState<Record<string, true>>({});
   const editFormRef = useRef<HTMLFormElement | null>(null);
   const editInputRef = useRef<HTMLInputElement | null>(null);
   const draftRootInputRef = useRef<HTMLInputElement | null>(null);
@@ -73,9 +77,74 @@ export default function TreeList({ nodes, mode, listId, depth = 0 }: TreeListPro
   const ignoreBlurUntilRef = useRef(0);
   const ignoreDraftRootBlurUntilRef = useRef(0);
   const ignoreDraftBlurUntilRef = useRef(0);
+  const previousCompletionStateRef = useRef<Record<string, boolean>>({});
+  const completionAnimationTimeoutsRef = useRef<Record<string, number>>({});
   const editingItemId = editingItem?.id;
   const hasDraftRoot = draftRootTitle !== null;
   const draftChildParentId = draftChild?.parentId;
+
+  const startCompletionAnimation = useCallback((id: string) => {
+    setCompletionAnimations((current) => {
+      if (current[id]) {
+        return current;
+      }
+      return { ...current, [id]: true };
+    });
+
+    const activeTimeout = completionAnimationTimeoutsRef.current[id];
+    if (activeTimeout) {
+      window.clearTimeout(activeTimeout);
+    }
+
+    completionAnimationTimeoutsRef.current[id] = window.setTimeout(() => {
+      setCompletionAnimations((current) => {
+        if (!current[id]) {
+          return current;
+        }
+        const next = { ...current };
+        delete next[id];
+        return next;
+      });
+      delete completionAnimationTimeoutsRef.current[id];
+    }, COMPLETION_ANIMATION_MS);
+  }, []);
+
+  useEffect(() => {
+    const nextCompletionState: Record<string, boolean> = {};
+    const newlyCompletedIds: string[] = [];
+
+    const collectCompletionState = (currentNodes: VisibleNode[]) => {
+      currentNodes.forEach((node) => {
+        nextCompletionState[node.id] = node.completed;
+        if (previousCompletionStateRef.current[node.id] === false && node.completed) {
+          newlyCompletedIds.push(node.id);
+        }
+        if (node.children.length > 0) {
+          collectCompletionState(node.children);
+        }
+      });
+    };
+
+    collectCompletionState(nodes);
+    previousCompletionStateRef.current = nextCompletionState;
+
+    if (newlyCompletedIds.length === 0) {
+      return;
+    }
+
+    newlyCompletedIds.forEach((id) => {
+      startCompletionAnimation(id);
+    });
+  }, [nodes, startCompletionAnimation]);
+
+  useEffect(() => {
+    return () => {
+      Object.values(completionAnimationTimeoutsRef.current).forEach((timeoutId) => {
+        window.clearTimeout(timeoutId);
+      });
+      completionAnimationTimeoutsRef.current = {};
+    };
+  }, []);
 
   useLayoutEffect(() => {
     if (!editingItemId) {
@@ -271,18 +340,68 @@ export default function TreeList({ nodes, mode, listId, depth = 0 }: TreeListPro
             : node.isPartiallyCompleted
               ? "indeterminate"
               : false;
+          const isCompletionAnimating = completionAnimations[node.id] === true;
           const toggleFormId = `toggle-item-${node.id}`;
           const isEditing = editingItem?.id === node.id;
           const isAddingDraftChild = draftChild?.parentId === node.id;
 
           return (
             <li key={node.id}>
-              <div
+              <motion.div
+                initial={false}
+                data-completion-animating={isCompletionAnimating ? "true" : "false"}
+                animate={
+                  isCompletionAnimating
+                    ? {
+                        scale: [1, 1.08, 0.995, 1],
+                        y: [0, -4, 1, 0],
+                        filter: [
+                          "brightness(1) saturate(1)",
+                          "brightness(1.3) saturate(1.45)",
+                          "brightness(1.06) saturate(1.1)",
+                          "brightness(1) saturate(1)",
+                        ],
+                        boxShadow: [
+                          "0 0 0 0 rgba(59, 130, 246, 0)",
+                          "0 0 0 8px rgba(59, 130, 246, 0.28)",
+                          "0 0 0 3px rgba(59, 130, 246, 0.16)",
+                          "0 0 0 0 rgba(59, 130, 246, 0)",
+                        ],
+                      }
+                    : {
+                        scale: 1,
+                        y: 0,
+                        filter: "brightness(1) saturate(1)",
+                        boxShadow: "0 0 0 0 rgba(59, 130, 246, 0)",
+                      }
+                }
+                transition={{
+                  duration: COMPLETION_ANIMATION_MS / 1000,
+                  ease: "easeOut",
+                  times: [0, 0.28, 0.65, 1],
+                }}
                 className={cn(
                   styles["tree-list__row"],
                   node.isContextOnly && styles["tree-list__row--context"],
                 )}
               >
+                <AnimatePresence>
+                  {isCompletionAnimating ? (
+                    <motion.span
+                      key={`completion-presence-${node.id}`}
+                      data-testid={`completion-presence-${node.id}`}
+                      className={styles["tree-list__completion-presence"]}
+                      initial={{ opacity: 0, scale: 0.88 }}
+                      animate={{ opacity: [0, 0.85, 0], scale: [0.88, 1.03, 1.12] }}
+                      exit={{ opacity: 0 }}
+                      transition={{
+                        duration: COMPLETION_ANIMATION_MS / 1000,
+                        ease: "easeOut",
+                        times: [0, 0.3, 1],
+                      }}
+                    />
+                  ) : null}
+                </AnimatePresence>
                 {needsUncheckConfirmation ? (
                   <span className={styles["tree-list__confirm-trigger"]}>
                     <Checkbox
@@ -337,6 +456,9 @@ export default function TreeList({ nodes, mode, listId, depth = 0 }: TreeListPro
                       aria-label={`Cambiar estado de ${node.title}`}
                       className={styles["tree-list__checkbox"]}
                       onCheckedChange={() => {
+                        if (nextCompletedValue === "true") {
+                          startCompletionAnimation(node.id);
+                        }
                         const form = document.getElementById(toggleFormId) as HTMLFormElement | null;
                         form?.requestSubmit();
                       }}
@@ -494,7 +616,7 @@ export default function TreeList({ nodes, mode, listId, depth = 0 }: TreeListPro
                     ) : null}
                   </div>
                 </div>
-              </div>
+              </motion.div>
               {isAddingDraftChild ? (
                 <ul className={cn(styles["tree-list"], styles["tree-list__branch"])}>
                   <li>

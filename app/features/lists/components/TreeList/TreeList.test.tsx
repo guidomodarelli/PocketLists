@@ -219,6 +219,57 @@ describe("TreeList", () => {
     requestSubmitSpy.mockRestore();
   });
 
+  test("marca animación de completado cuando un ítem pasa a completado", () => {
+    jest.useFakeTimers();
+    try {
+      const itemId = "anim-node";
+      const initialNode = createNode({
+        id: itemId,
+        title: "Nodo animado",
+        completed: false,
+        children: [],
+      });
+
+      const { rerender } = render(<TreeList nodes={[initialNode]} mode="pending" listId="list-1" />);
+      const initialCheckbox = screen.getByLabelText("Cambiar estado de Nodo animado");
+      expect(initialCheckbox.closest("[data-completion-animating]")).toHaveAttribute(
+        "data-completion-animating",
+        "false"
+      );
+      expect(screen.queryByTestId(`completion-presence-${itemId}`)).not.toBeInTheDocument();
+
+      const completedNode = createNode({
+        id: itemId,
+        title: "Nodo animado",
+        completed: true,
+        children: [],
+      });
+      rerender(<TreeList nodes={[completedNode]} mode="pending" listId="list-1" />);
+
+      const completedCheckbox = screen.getByLabelText("Cambiar estado de Nodo animado");
+      expect(completedCheckbox.closest("[data-completion-animating]")).toHaveAttribute(
+        "data-completion-animating",
+        "true"
+      );
+      expect(screen.getByTestId(`completion-presence-${itemId}`)).toBeInTheDocument();
+
+      act(() => {
+        jest.advanceTimersByTime(1200);
+      });
+
+      expect(completedCheckbox.closest("[data-completion-animating]")).toHaveAttribute(
+        "data-completion-animating",
+        "false"
+      );
+      const finalPresence = screen.queryByTestId(`completion-presence-${itemId}`);
+      if (finalPresence) {
+        expect(finalPresence).toHaveStyle({ opacity: "0" });
+      }
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   test("al clickear + abre edición inline de nuevo hijo sin dialog", () => {
     const parent = createNode({ id: "parent-add", title: "Padre para hijo", children: [] });
 

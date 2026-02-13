@@ -13,11 +13,15 @@
 }
 
 .tree-list__row {
-  @apply flex items-center gap-3 rounded-lg bg-card px-2 py-1.5 shadow-xs transition;
+  @apply relative overflow-hidden flex items-center gap-3 rounded-lg bg-card px-2 py-1.5 shadow-xs transition;
 }
 
 .tree-list__row--context {
   @apply bg-muted/60 shadow-none;
+}
+
+.tree-list__completion-presence {
+  @apply pointer-events-none absolute inset-[-2px] rounded-[inherit] border-2 border-primary/70 bg-primary/20;
 }
 
 .tree-list__context-checkbox {
