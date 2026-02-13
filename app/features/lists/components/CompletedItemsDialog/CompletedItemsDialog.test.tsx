@@ -1,7 +1,14 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { MouseEvent, ReactNode } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { VisibleNode } from "../../types";
 import CompletedItemsDialog from "./CompletedItemsDialog";
+
+jest.mock("next/navigation", () => ({
+  useRouter: jest.fn(),
+  usePathname: jest.fn(),
+  useSearchParams: jest.fn(),
+}));
 
 jest.mock("../TreeList/TreeList", () => ({
   __esModule: true,
@@ -37,6 +44,11 @@ jest.mock("../Link/Link", () => ({
   ),
 }));
 
+const replaceMock = jest.fn();
+const useRouterMock = useRouter as jest.MockedFunction<typeof useRouter>;
+const usePathnameMock = usePathname as jest.MockedFunction<typeof usePathname>;
+const useSearchParamsMock = useSearchParams as jest.MockedFunction<typeof useSearchParams>;
+
 function createNode(overrides: Partial<VisibleNode> = {}): VisibleNode {
   return {
     id: "node-1",
@@ -50,6 +62,15 @@ function createNode(overrides: Partial<VisibleNode> = {}): VisibleNode {
 }
 
 describe("CompletedItemsDialog", () => {
+  beforeEach(() => {
+    replaceMock.mockReset();
+    useRouterMock.mockReturnValue({ replace: replaceMock } as unknown as ReturnType<typeof useRouter>);
+    usePathnameMock.mockReturnValue("/lists/list-1");
+    useSearchParamsMock.mockReturnValue(
+      new URLSearchParams() as unknown as ReturnType<typeof useSearchParams>
+    );
+  });
+
   test("abre el dialog al clickear Ver completados y muestra contenido", () => {
     render(
       <CompletedItemsDialog
@@ -83,6 +104,28 @@ describe("CompletedItemsDialog", () => {
 
     expect(screen.getByText("Completados")).toBeInTheDocument();
     expect(screen.getByText("Tenés 1 ítems completados.")).toBeInTheDocument();
+  });
+
+  test("al cerrar limpia el query openCompleted para no reabrir por defecto", async () => {
+    useSearchParamsMock.mockReturnValue(
+      new URLSearchParams("openCompleted=true&foo=bar") as unknown as ReturnType<typeof useSearchParams>
+    );
+
+    render(
+      <CompletedItemsDialog
+        nodes={[createNode()]}
+        completedCount={1}
+        canResetCompleted
+        listId="list-1"
+        openOnLoad
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+
+    await waitFor(() => {
+      expect(replaceMock).toHaveBeenCalledWith("/lists/list-1?foo=bar", { scroll: false });
+    });
   });
 
   test("muestra link para desmarcar completados cuando corresponde", () => {

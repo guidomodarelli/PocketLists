@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "../Link/Link";
 import TreeList from "../TreeList/TreeList";
 import type { VisibleNode } from "../../types";
@@ -29,14 +30,29 @@ export default function CompletedItemsDialog({
   listId,
   openOnLoad = false,
 }: CompletedItemsDialogProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const listPath = `/lists/${encodeURIComponent(listId)}`;
   const dialogStateKey = [
     canResetCompleted ? "with-completed-items" : "without-completed-items",
     openOnLoad ? "open-on-load" : "manual-open",
   ].join("-");
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (nextOpen || !searchParams.has("openCompleted")) {
+      return;
+    }
+
+    const nextSearchParams = new URLSearchParams(searchParams.toString());
+    nextSearchParams.delete("openCompleted");
+    const nextQuery = nextSearchParams.toString();
+    const nextPathname = pathname || listPath;
+    const nextHref = nextQuery.length > 0 ? `${nextPathname}?${nextQuery}` : nextPathname;
+    router.replace(nextHref, { scroll: false });
+  };
 
   return (
-    <Dialog key={dialogStateKey} defaultOpen={openOnLoad}>
+    <Dialog key={dialogStateKey} defaultOpen={openOnLoad} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button type="button" variant="outline" className={styles["completed-items-dialog__trigger"]}>
           Ver completados
