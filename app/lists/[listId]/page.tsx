@@ -4,6 +4,7 @@ import TreeList from "@/app/features/lists/components/TreeList/TreeList";
 import Link from "@/app/features/lists/components/Link/Link";
 import AddRootItemButton from "@/app/features/lists/components/AddRootItemButton/AddRootItemButton";
 import CompletedItemsDialog from "@/app/features/lists/components/CompletedItemsDialog/CompletedItemsDialog";
+import ListTitleEditable from "@/app/features/lists/components/ListTitleEditable/ListTitleEditable";
 import type { ApiError, List, ListsResponse } from "@/app/features/lists/types";
 import { buildVisibleTree, countByStatus, findNode } from "@/app/features/lists/tree";
 import {
@@ -88,6 +89,13 @@ function resolveActionError(errorParam?: string): { title: string; description: 
   if (errorParam === "edit") {
     return {
       title: "No pudimos editar el ítem.",
+      description: "Reintentá la edición o recargá la página para sincronizar los datos.",
+    };
+  }
+
+  if (errorParam === "listEdit") {
+    return {
+      title: "No pudimos editar el nombre de la lista.",
       description: "Reintentá la edición o recargá la página para sincronizar los datos.",
     };
   }
@@ -187,7 +195,7 @@ export default async function ListPage({ params, searchParams }: PageProps) {
         <header className={styles["home-page__header"]}>
           <div className={styles["home-page__title-row"]}>
             <SidebarTrigger className={styles["home-page__sidebar-trigger"]} />
-            <h1 className={styles["home-page__title"]}>{activeList.title}</h1>
+            <ListTitleEditable listId={listId} title={activeList.title} className={styles["home-page__title"]} />
           </div>
           <p className={styles["home-page__subtitle"]}>
             Sistema jerárquico con completado automático de padres y confirmación solo en completado
@@ -239,7 +247,7 @@ export default async function ListPage({ params, searchParams }: PageProps) {
         <header className={styles["home-page__header"]}>
           <div className={styles["home-page__title-row"]}>
             <SidebarTrigger className={styles["home-page__sidebar-trigger"]} />
-            <h1 className={styles["home-page__title"]}>{activeList.title}</h1>
+            <ListTitleEditable listId={listId} title={activeList.title} className={styles["home-page__title"]} />
           </div>
           <p className={styles["home-page__subtitle"]}>
             Sistema jerárquico con completado automático de padres y confirmación solo en completado

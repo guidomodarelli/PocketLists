@@ -95,6 +95,22 @@ function writeStoreListItems(listId: string, items: ItemNode[]): ItemNode[] | nu
   return items;
 }
 
+function writeStoreListTitle(listId: string, title: string): List | null {
+  const lists = getStoreLists();
+  const listIndex = lists.findIndex((list) => list.id === listId);
+  if (listIndex === -1) {
+    return null;
+  }
+
+  const nextLists = [...lists];
+  nextLists[listIndex] = {
+    ...nextLists[listIndex],
+    title,
+  };
+  writeStore(nextLists);
+  return nextLists[listIndex];
+}
+
 function removeNodeFromTree(items: ItemNode[], id: string): [ItemNode[], boolean] {
   let changed = false;
   const result: ItemNode[] = [];
@@ -143,6 +159,20 @@ export function createList(title = "Sin nombre"): List {
 
   writeStore([newList, ...getStoreLists()]);
   return newList;
+}
+
+export function updateListTitle(listId: string, title: string): List | null {
+  const normalizedTitle = title.trim();
+  const list = getStoreListById(listId);
+  if (!list) {
+    return null;
+  }
+
+  if (list.title === normalizedTitle) {
+    return list;
+  }
+
+  return writeStoreListTitle(listId, normalizedTitle);
 }
 
 export function getNodeById(listId: string, id: string): ItemNode | undefined {

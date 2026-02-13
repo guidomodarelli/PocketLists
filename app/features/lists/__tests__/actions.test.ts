@@ -4,6 +4,7 @@ import {
   confirmUncheckParentAction,
   createItemAction,
   deleteItemAction,
+  editListTitleAction,
   editItemTitleAction,
   resetCompletedAction,
   toggleItemAction,
@@ -32,6 +33,7 @@ jest.mock("../services", () => ({
   resetCompletedItems: jest.fn(),
   toggleItem: jest.fn(),
   uncheckParent: jest.fn(),
+  updateListTitle: jest.fn(),
   updateItemTitle: jest.fn(),
 }));
 
@@ -256,5 +258,41 @@ describe("actions", () => {
     expect(servicesMock.createList).toHaveBeenCalledWith("Sin nombre");
     expect(revalidateTagMock).toHaveBeenCalledWith("lists", "max");
     expect(redirectMock).toHaveBeenCalledWith("/lists/list-new");
+  });
+
+  test("editListTitleAction: falta listId requerido", async () => {
+    await expect(editListTitleAction(createFormData({ title: "Lista nueva" }))).rejects.toThrow(
+      'Falta el campo requerido "listId".'
+    );
+  });
+
+  test("editListTitleAction: permite title vacío", async () => {
+    servicesMock.updateListTitle.mockReturnValue({ id: "list-1", title: "", items: [] });
+
+    await expect(editListTitleAction(createFormData({ listId: "list-1", title: "" }))).rejects.toThrow(
+      "NEXT_REDIRECT:/lists/list-1"
+    );
+
+    expect(servicesMock.updateListTitle).toHaveBeenCalledWith("list-1", "");
+  });
+
+  test("editListTitleAction: redirige a error cuando update falla", async () => {
+    servicesMock.updateListTitle.mockReturnValue(null);
+
+    await expect(editListTitleAction(createFormData({ listId: "list-1", title: "Lista nueva" }))).rejects.toThrow(
+      "NEXT_REDIRECT:/lists/list-1?error=listEdit"
+    );
+  });
+
+  test("editListTitleAction: actualiza + revalida + redirige en happy path", async () => {
+    servicesMock.updateListTitle.mockReturnValue({ id: "list-1", title: "Lista nueva", items: [] });
+
+    await expect(editListTitleAction(createFormData({ listId: "list-1", title: "Lista nueva" }))).rejects.toThrow(
+      "NEXT_REDIRECT:/lists/list-1"
+    );
+
+    expect(servicesMock.updateListTitle).toHaveBeenCalledWith("list-1", "Lista nueva");
+    expect(revalidateTagMock).toHaveBeenCalledWith("lists", "max");
+    expect(redirectMock).toHaveBeenCalledWith("/lists/list-1");
   });
 });

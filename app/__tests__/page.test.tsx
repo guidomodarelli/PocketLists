@@ -47,6 +47,15 @@ jest.mock("@/app/features/lists/components/CompletedItemsDialog/CompletedItemsDi
   ),
 }));
 
+jest.mock("@/app/features/lists/components/ListTitleEditable/ListTitleEditable", () => ({
+  __esModule: true,
+  default: ({ title, listId }: { title: string; listId: string }) => (
+    <h1 data-testid="list-title-editable">
+      title:{title} list:{listId}
+    </h1>
+  ),
+}));
+
 jest.mock("@/components/ui/button", () => ({
   Button: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
     <button {...props}>{children}</button>
@@ -153,6 +162,8 @@ describe("List page SSR", () => {
 
     expect(screen.getByText("Pendientes: 1")).toBeInTheDocument();
     expect(screen.getByText("Completados: 1")).toBeInTheDocument();
+    expect(screen.getByTestId("list-title-editable")).toHaveTextContent("title:Lista 1");
+    expect(screen.getByTestId("list-title-editable")).toHaveTextContent("list:list-1");
     expect(screen.getByTestId("tree-list-pending")).toBeInTheDocument();
     expect(screen.getByTestId("completed-items-dialog")).toHaveTextContent("completed:1");
     expect(screen.getByTestId("completed-items-dialog")).toHaveTextContent("list:list-1");

@@ -11,6 +11,7 @@ import {
   resetCompletedItems,
   toggleItem,
   uncheckParent,
+  updateListTitle,
   updateItemTitle,
 } from "./services";
 
@@ -40,6 +41,14 @@ function readOptionalString(formData: FormData, key: string): string | undefined
   }
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function readString(formData: FormData, key: string): string {
+  const value = formData.get(key);
+  if (typeof value !== "string") {
+    throw new Error(`Valor inválido para "${key}".`);
+  }
+  return value;
 }
 
 function buildListPath(listId: string): string {
@@ -178,4 +187,18 @@ export async function createListAction(): Promise<void> {
   const newList = createList("Sin nombre");
   revalidateTag("lists", "max");
   redirect(buildListPath(newList.id));
+}
+
+export async function editListTitleAction(formData: FormData): Promise<void> {
+  const listId = readRequiredString(formData, "listId");
+  const title = readString(formData, "title");
+  const listPath = buildListPath(listId);
+
+  const result = updateListTitle(listId, title);
+  if (!result) {
+    redirect(`${listPath}?error=listEdit`);
+  }
+
+  revalidateTag("lists", "max");
+  redirect(listPath);
 }

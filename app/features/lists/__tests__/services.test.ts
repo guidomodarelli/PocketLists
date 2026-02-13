@@ -11,6 +11,7 @@ import {
   resetCompletedItems,
   toggleItem,
   uncheckParent,
+  updateListTitle,
   updateItemTitle,
 } from "../services";
 
@@ -56,6 +57,26 @@ describe("services", () => {
     expect(created.title).toBe("Sin nombre");
     expect(created.id.startsWith("list-")).toBe(true);
     expect(summaries[0]?.id).toBe(created.id);
+  });
+
+  test("updateListTitle actualiza el nombre de una lista existente", () => {
+    const updatedList = updateListTitle(DEFAULT_LIST_ID, "Lista renombrada");
+
+    expect(updatedList).not.toBeNull();
+    expect(updatedList?.title).toBe("Lista renombrada");
+    expect(getListById(DEFAULT_LIST_ID)?.title).toBe("Lista renombrada");
+  });
+
+  test("updateListTitle retorna null cuando la lista no existe", () => {
+    expect(updateListTitle("missing-list", "Nuevo nombre")).toBeNull();
+  });
+
+  test("updateListTitle permite guardar título vacío", () => {
+    const updatedList = updateListTitle(DEFAULT_LIST_ID, "   ");
+
+    expect(updatedList).not.toBeNull();
+    expect(updatedList?.title).toBe("");
+    expect(getListById(DEFAULT_LIST_ID)?.title).toBe("");
   });
 
   test("migra store legacy en memoria con shape { items: [...] }", () => {
