@@ -1,13 +1,12 @@
 import { render, screen } from "@testing-library/react";
 import Loading from "./loading";
 
-jest.mock("@/components/ui/card", () => ({
-  Card: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => <div {...props}>{children}</div>,
-}));
-
 describe("Loading page", () => {
-  test("muestra mensaje de carga", () => {
+  test("muestra el loader de carga", () => {
     render(<Loading />);
-    expect(screen.getByText("Cargando listas...")).toBeInTheDocument();
+    const loader = screen.getByRole("status", { name: "Cargando listas" });
+    expect(loader).toBeInTheDocument();
+    expect(loader.parentElement).toHaveClass("loading-page");
+    expect(loader.parentElement).not.toHaveClass("loading-page__card");
   });
 });
