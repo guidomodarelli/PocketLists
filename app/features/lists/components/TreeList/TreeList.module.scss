@@ -64,6 +64,10 @@
   @apply h-7 px-2.5 text-xs;
 }
 
+.tree-list__title-trigger {
+  @apply block w-full cursor-text rounded-sm border-0 bg-transparent p-0 text-left outline-none focus-visible:ring-2 focus-visible:ring-slate-300 disabled:cursor-default disabled:pointer-events-none;
+}
+
 .tree-list__title {
   @apply text-sm font-medium text-slate-900;
 }

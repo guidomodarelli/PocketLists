@@ -291,6 +291,15 @@ describe("TreeList", () => {
     expect(screen.getByRole("button", { name: "Guardar" })).toBeInTheDocument();
   });
 
+  test("permite editar inline al clickear el nombre del ítem", () => {
+    const node = createNode({ id: "edit-click", title: "Editar al click", children: [] });
+
+    render(<TreeList nodes={[node]} mode="pending" listId="list-1" />);
+    fireEvent.click(screen.getByText("Editar al click"));
+
+    expect(screen.getByDisplayValue("Editar al click")).toBeInTheDocument();
+  });
+
   test("deshabilita los tres puntos mientras hay edición inline activa", () => {
     const nodeA = createNode({ id: "edit-a", title: "Ítem A", children: [] });
     const nodeB = createNode({ id: "edit-b", title: "Ítem B", children: [] });
@@ -303,8 +312,9 @@ describe("TreeList", () => {
     expect(screen.getByLabelText("Abrir acciones de Ítem B")).toBeDisabled();
   });
 
-  test("si pierde foco fuera del input group cancela edición y descarta cambios", async () => {
+  test("si pierde foco fuera del input group y el título no está vacío, envía guardado", async () => {
     const node = createNode({ id: "edit-cancel", title: "Texto base", children: [] });
+    const requestSubmitSpy = jest.spyOn(HTMLFormElement.prototype, "requestSubmit");
 
     render(<TreeList nodes={[node]} mode="pending" listId="list-1" />);
     fireEvent.click(screen.getByLabelText("Abrir acciones de Texto base"));
@@ -315,7 +325,60 @@ describe("TreeList", () => {
     await new Promise((resolve) => setTimeout(resolve, 300));
     fireEvent.blur(input);
 
-    expect(screen.queryByDisplayValue("Texto modificado")).not.toBeInTheDocument();
-    expect(screen.getByText("Texto base")).toBeInTheDocument();
+    expect(requestSubmitSpy).toHaveBeenCalledTimes(1);
+    requestSubmitSpy.mockRestore();
+  });
+
+  test("con Enter y título no vacío envía guardado", () => {
+    const node = createNode({ id: "edit-enter", title: "Texto enter", children: [] });
+    const requestSubmitSpy = jest.spyOn(HTMLFormElement.prototype, "requestSubmit");
+
+    render(<TreeList nodes={[node]} mode="pending" listId="list-1" />);
+    fireEvent.click(screen.getByLabelText("Abrir acciones de Texto enter"));
+    fireEvent.click(screen.getByLabelText("Editar Texto enter"));
+
+    const input = screen.getByDisplayValue("Texto enter");
+    fireEvent.change(input, { target: { value: "Texto enter actualizado" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(requestSubmitSpy).toHaveBeenCalledTimes(1);
+    requestSubmitSpy.mockRestore();
+  });
+
+  test("con Enter y título vacío descarta edición sin guardar", () => {
+    const node = createNode({ id: "edit-empty-enter", title: "Texto vacío", children: [] });
+    const requestSubmitSpy = jest.spyOn(HTMLFormElement.prototype, "requestSubmit");
+
+    render(<TreeList nodes={[node]} mode="pending" listId="list-1" />);
+    fireEvent.click(screen.getByLabelText("Abrir acciones de Texto vacío"));
+    fireEvent.click(screen.getByLabelText("Editar Texto vacío"));
+
+    const input = screen.getByDisplayValue("Texto vacío");
+    fireEvent.change(input, { target: { value: "" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(requestSubmitSpy).not.toHaveBeenCalled();
+    expect(screen.queryByDisplayValue("")).not.toBeInTheDocument();
+    expect(screen.getByText("Texto vacío")).toBeInTheDocument();
+    requestSubmitSpy.mockRestore();
+  });
+
+  test("si pierde foco con título vacío descarta edición sin guardar", async () => {
+    const node = createNode({ id: "edit-empty-blur", title: "Texto blur vacío", children: [] });
+    const requestSubmitSpy = jest.spyOn(HTMLFormElement.prototype, "requestSubmit");
+
+    render(<TreeList nodes={[node]} mode="pending" listId="list-1" />);
+    fireEvent.click(screen.getByLabelText("Abrir acciones de Texto blur vacío"));
+    fireEvent.click(screen.getByLabelText("Editar Texto blur vacío"));
+
+    const input = screen.getByDisplayValue("Texto blur vacío");
+    fireEvent.change(input, { target: { value: "" } });
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    fireEvent.blur(input);
+
+    expect(requestSubmitSpy).not.toHaveBeenCalled();
+    expect(screen.queryByDisplayValue("")).not.toBeInTheDocument();
+    expect(screen.getByText("Texto blur vacío")).toBeInTheDocument();
+    requestSubmitSpy.mockRestore();
   });
 });

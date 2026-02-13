@@ -66,6 +66,7 @@ export default function TreeList({ nodes, mode, listId, depth = 0 }: TreeListPro
   const [editingItem, setEditingItem] = useState<{ id: string; title: string } | null>(null);
   const [draftRootTitle, setDraftRootTitle] = useState<string | null>(null);
   const [draftChild, setDraftChild] = useState<{ parentId: string; title: string } | null>(null);
+  const editFormRef = useRef<HTMLFormElement | null>(null);
   const editInputRef = useRef<HTMLInputElement | null>(null);
   const draftRootInputRef = useRef<HTMLInputElement | null>(null);
   const draftChildInputRef = useRef<HTMLInputElement | null>(null);
@@ -174,6 +175,19 @@ export default function TreeList({ nodes, mode, listId, depth = 0 }: TreeListPro
 
   const closeParentModal = () => setParentModalAction(null);
   const closeDeleteModal = () => setDeleteModalAction(null);
+  const openItemEditMode = (item: { id: string; title: string }) => {
+    ignoreBlurUntilRef.current = Date.now() + 250;
+    setEditingItem({ id: item.id, title: item.title });
+    window.setTimeout(() => {
+      const input = editInputRef.current;
+      if (!input) {
+        return;
+      }
+      input.focus();
+      const end = input.value.length;
+      input.setSelectionRange(end, end);
+    }, 60);
+  };
 
   const parentAction =
     parentModalAction?.intent === "complete" ? confirmParentAction : confirmUncheckParentAction;
@@ -333,6 +347,7 @@ export default function TreeList({ nodes, mode, listId, depth = 0 }: TreeListPro
                   <div className={styles["tree-list__text-wrap"]}>
                     {isEditing ? (
                       <form
+                        ref={editFormRef}
                         action={editItemTitleAction}
                         className={styles["tree-list__edit-form"]}
                         onBlur={(event) => {
@@ -343,7 +358,16 @@ export default function TreeList({ nodes, mode, listId, depth = 0 }: TreeListPro
                           if (nextFocused && event.currentTarget.contains(nextFocused)) {
                             return;
                           }
-                          setEditingItem(null);
+                          const nextTitle = editingItem?.id === node.id ? editingItem.title.trim() : "";
+                          if (nextTitle.length === 0) {
+                            setEditingItem(null);
+                            return;
+                          }
+                          if (nextTitle === node.title.trim()) {
+                            setEditingItem(null);
+                            return;
+                          }
+                          editFormRef.current?.requestSubmit();
                         }}
                       >
                         <input type="hidden" name="listId" value={listId} />
@@ -361,6 +385,19 @@ export default function TreeList({ nodes, mode, listId, depth = 0 }: TreeListPro
                               );
                             }}
                             className={styles["tree-list__edit-input"]}
+                            onKeyDown={(event) => {
+                              if (event.key !== "Enter") {
+                                return;
+                              }
+
+                              event.preventDefault();
+                              const nextTitle = editingItem?.id === node.id ? editingItem.title.trim() : "";
+                              if (nextTitle.length === 0 || nextTitle === node.title.trim()) {
+                                setEditingItem(null);
+                                return;
+                              }
+                              editFormRef.current?.requestSubmit();
+                            }}
                             required
                             autoFocus
                           />
@@ -376,14 +413,18 @@ export default function TreeList({ nodes, mode, listId, depth = 0 }: TreeListPro
                         </InputGroup>
                       </form>
                     ) : (
-                      <p
+                      <button
+                        type="button"
                         className={cn(
+                          styles["tree-list__title-trigger"],
                           styles["tree-list__title"],
                           node.completed && styles["tree-list__title--completed"],
                         )}
+                        disabled={hasDraftRoot || Boolean(draftChild) || Boolean(editingItem)}
+                        onClick={() => openItemEditMode({ id: node.id, title: node.title })}
                       >
                         {node.title}
-                      </p>
+                      </button>
                     )}
                     {mode === "completed" && node.isContextOnly ? (
                       <p className={styles["tree-list__context-label"]}>Contexto de ruta (pendiente)</p>
@@ -428,17 +469,7 @@ export default function TreeList({ nodes, mode, listId, depth = 0 }: TreeListPro
                           <DropdownMenuItem
                             aria-label={`Editar ${node.title}`}
                             onSelect={() => {
-                              ignoreBlurUntilRef.current = Date.now() + 250;
-                              setEditingItem({ id: node.id, title: node.title });
-                              window.setTimeout(() => {
-                                const input = editInputRef.current;
-                                if (!input) {
-                                  return;
-                                }
-                                input.focus();
-                                const end = input.value.length;
-                                input.setSelectionRange(end, end);
-                              }, 60);
+                              openItemEditMode({ id: node.id, title: node.title });
                             }}
                           >
                             <Pencil className={styles["tree-list__edit-icon"]} />
