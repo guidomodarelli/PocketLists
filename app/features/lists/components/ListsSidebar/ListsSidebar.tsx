@@ -3,19 +3,25 @@
 import { useEffect, useRef, useState } from "react";
 import NextLink from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
-import { createListAction, editListTitleAction } from "../../actions";
+import { MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
+import { createListAction, deleteListAction, editListTitleAction } from "../../actions";
 import type { ListSummary } from "../../types";
 import { Button } from "@/components/ui/button";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
@@ -29,9 +35,19 @@ type ListsSidebarProps = {
 
 const DOUBLE_CLICK_DELAY_MS = 250;
 
+function getCurrentListId(pathname: string): string | null {
+  const pathSegments = pathname.split("/");
+  if (pathSegments[1] !== "lists" || !pathSegments[2]) {
+    return null;
+  }
+
+  return decodeURIComponent(pathSegments[2]);
+}
+
 export default function ListsSidebar({ lists }: ListsSidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const currentListId = getCurrentListId(pathname);
   const [editingListId, setEditingListId] = useState<string | null>(null);
   const [draftTitle, setDraftTitle] = useState("");
   const editFormRef = useRef<HTMLFormElement | null>(null);
@@ -88,7 +104,17 @@ export default function ListsSidebar({ lists }: ListsSidebarProps) {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Listas</SidebarGroupLabel>
+          <SidebarGroupLabel asChild>
+            <div className={styles["lists-sidebar__group-header"]}>
+              <span className={styles["lists-sidebar__group-title"]}>Listas</span>
+              <form action={createListAction} className={styles["lists-sidebar__new-list-form"]}>
+                <Button type="submit" variant="ghost" size="xs" className={styles["lists-sidebar__new-list-button"]}>
+                  <Plus className={styles["lists-sidebar__new-list-icon"]} />
+                  <span className={styles["lists-sidebar__new-list-text"]}>Nueva lista</span>
+                </Button>
+              </form>
+            </div>
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {lists.map((list) => {
@@ -98,6 +124,7 @@ export default function ListsSidebar({ lists }: ListsSidebarProps) {
                 const normalizedListTitle = list.title.trim();
                 const isPlaceholder = normalizedListTitle.length === 0;
                 const visibleListTitle = isPlaceholder ? "(Sin nombre)" : list.title;
+                const deleteFormId = `delete-list-${list.id}`;
 
                 return (
                   <SidebarMenuItem key={list.id}>
@@ -187,6 +214,46 @@ export default function ListsSidebar({ lists }: ListsSidebarProps) {
                         </NextLink>
                       </SidebarMenuButton>
                     )}
+                    {!isEditing ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <SidebarMenuAction
+                            showOnHover
+                            aria-label={`Abrir acciones de ${visibleListTitle}`}
+                            className={styles["lists-sidebar__actions-trigger"]}
+                          >
+                            <MoreVertical className={styles["lists-sidebar__actions-icon"]} />
+                          </SidebarMenuAction>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            aria-label={`Editar ${visibleListTitle}`}
+                            onSelect={() => {
+                              openEditMode(list);
+                            }}
+                          >
+                            <Pencil className={styles["lists-sidebar__menu-icon"]} />
+                            Editar nombre
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            aria-label={`Eliminar ${visibleListTitle}`}
+                            variant="destructive"
+                            onSelect={() => {
+                              clearPendingNavigation();
+                              const form = document.getElementById(deleteFormId) as HTMLFormElement | null;
+                              form?.requestSubmit();
+                            }}
+                          >
+                            <Trash2 className={styles["lists-sidebar__menu-icon"]} />
+                            Eliminar lista
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ) : null}
+                    <form id={deleteFormId} action={deleteListAction} className={styles["lists-sidebar__delete-form"]}>
+                      <input type="hidden" name="listId" value={list.id} />
+                      <input type="hidden" name="currentListId" value={currentListId ?? list.id} />
+                    </form>
                   </SidebarMenuItem>
                 );
               })}
@@ -194,14 +261,6 @@ export default function ListsSidebar({ lists }: ListsSidebarProps) {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter>
-        <form action={createListAction} className={styles["lists-sidebar__new-list-form"]}>
-          <Button type="submit" className={styles["lists-sidebar__new-list-button"]}>
-            <Plus className={styles["lists-sidebar__new-list-icon"]} />
-            <span>Nueva lista</span>
-          </Button>
-        </form>
-      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   );

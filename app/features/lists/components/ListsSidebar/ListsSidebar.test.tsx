@@ -16,7 +16,34 @@ jest.mock("next/link", () => ({
 
 jest.mock("../../actions", () => ({
   createListAction: jest.fn(),
+  deleteListAction: jest.fn(),
   editListTitleAction: jest.fn(),
+}));
+
+jest.mock("@/components/ui/dropdown-menu", () => ({
+  DropdownMenu: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DropdownMenuTrigger: ({ children }: { children: ReactNode }) => <>{children}</>,
+  DropdownMenuContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DropdownMenuItem: ({
+    children,
+    onSelect,
+    ...props
+  }: {
+    children: ReactNode;
+    onSelect?: (event: Event & { preventDefault: () => void }) => void;
+    [key: string]: unknown;
+  }) => (
+    <button
+      type="button"
+      {...props}
+      onClick={() =>
+        onSelect?.({
+          preventDefault: () => undefined,
+        } as Event & { preventDefault: () => void })}
+    >
+      {children}
+    </button>
+  ),
 }));
 
 jest.mock("@/components/ui/sidebar", () => ({
@@ -29,6 +56,16 @@ jest.mock("@/components/ui/sidebar", () => ({
   SidebarHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   SidebarMenu: ({ children }: { children: ReactNode }) => <ul>{children}</ul>,
   SidebarMenuItem: ({ children }: { children: ReactNode }) => <li>{children}</li>,
+  SidebarMenuAction: ({ children, ...props }: { children: ReactNode; [key: string]: unknown }) => {
+    const showOnHover = Boolean(props.showOnHover);
+    const buttonProps = { ...props };
+    delete buttonProps.showOnHover;
+    return (
+      <button type="button" data-show-on-hover={String(showOnHover)} {...buttonProps}>
+        {children}
+      </button>
+    );
+  },
   SidebarMenuButton: ({
     children,
     isActive,
@@ -50,7 +87,7 @@ describe("ListsSidebar", () => {
     jest.useRealTimers();
   });
 
-  test("renderiza navegación de listas y botón para crear nueva lista", () => {
+  test("renderiza navegación de listas y botón para crear nueva lista en el encabezado", () => {
     render(
       <ListsSidebar
         lists={[
@@ -60,9 +97,21 @@ describe("ListsSidebar", () => {
       />
     );
 
-    expect(screen.getByRole("link", { name: "Lista 1" })).toHaveAttribute("href", "/lists/list-1");
-    expect(screen.getByRole("link", { name: "Lista 2" })).toHaveAttribute("href", "/lists/list-2");
-    expect(screen.getByRole("button", { name: "Nueva lista" })).toBeInTheDocument();
+    const firstListLink = screen.getByRole("link", { name: "Lista 1" });
+    const secondListLink = screen.getByRole("link", { name: "Lista 2" });
+    const newListButton = screen.getByRole("button", { name: "Nueva lista" });
+
+    expect(firstListLink).toHaveAttribute("href", "/lists/list-1");
+    expect(secondListLink).toHaveAttribute("href", "/lists/list-2");
+    expect(screen.getByText("Listas")).toBeInTheDocument();
+    expect(newListButton).toHaveAttribute("data-variant", "ghost");
+    expect(newListButton).toHaveAttribute("data-size", "xs");
+    expect(
+      Boolean(newListButton.compareDocumentPosition(firstListLink) & Node.DOCUMENT_POSITION_FOLLOWING)
+    ).toBe(true);
+    const actionsButton = screen.getByRole("button", { name: "Abrir acciones de Lista 1" });
+    expect(actionsButton).toBeInTheDocument();
+    expect(actionsButton).toHaveAttribute("data-show-on-hover", "true");
   });
 
   test("muestra placeholder cuando la lista no tiene nombre", () => {
@@ -192,6 +241,37 @@ describe("ListsSidebar", () => {
     fireEvent.change(input, { target: { value: "Lista actualizada" } });
     fireEvent.blur(input);
 
+    expect(requestSubmitSpy).toHaveBeenCalledTimes(1);
+    requestSubmitSpy.mockRestore();
+  });
+
+  test("abre edición desde el menú de acciones", () => {
+    render(
+      <ListsSidebar
+        lists={[
+          { id: "list-1", title: "Lista 1" },
+          { id: "list-2", title: "Lista 2" },
+        ]}
+      />
+    );
+
+    fireEvent.click(screen.getByLabelText("Editar Lista 1"));
+    expect(screen.getByLabelText("Editar nombre de Lista 1")).toBeInTheDocument();
+  });
+
+  test("eliminar lista desde el menú envía el formulario de borrado", () => {
+    const requestSubmitSpy = jest.spyOn(HTMLFormElement.prototype, "requestSubmit");
+
+    render(
+      <ListsSidebar
+        lists={[
+          { id: "list-1", title: "Lista 1" },
+          { id: "list-2", title: "Lista 2" },
+        ]}
+      />
+    );
+
+    fireEvent.click(screen.getByLabelText("Eliminar Lista 1"));
     expect(requestSubmitSpy).toHaveBeenCalledTimes(1);
     requestSubmitSpy.mockRestore();
   });

@@ -8,6 +8,14 @@
   @apply text-sm font-semibold text-slate-900;
 }
 
+.lists-sidebar__group-header {
+  @apply flex w-full items-center justify-between gap-2 pr-1;
+}
+
+.lists-sidebar__group-title {
+  @apply truncate;
+}
+
 .lists-sidebar__item-title {
   @apply block w-full truncate text-left;
 }
@@ -24,6 +32,18 @@
   @apply block w-full;
 }
 
+.lists-sidebar__actions-trigger {
+  @apply text-slate-500;
+}
+
+.lists-sidebar__actions-icon {
+  @apply h-4 w-4;
+}
+
+.lists-sidebar__menu-icon {
+  @apply h-4 w-4;
+}
+
 .lists-sidebar__edit-form {
   @apply w-full;
 }
@@ -36,14 +56,22 @@
   @apply border-slate-400 ring-2 ring-slate-200;
 }
 
+.lists-sidebar__delete-form {
+  @apply hidden;
+}
+
 .lists-sidebar__new-list-form {
-  @apply p-2;
+  @apply m-0 p-0;
 }
 
 .lists-sidebar__new-list-button {
-  @apply w-full justify-start gap-2;
+  @apply h-6 gap-1 rounded-md px-1.5 text-slate-500 hover:text-slate-700;
 }
 
 .lists-sidebar__new-list-icon {
-  @apply h-4 w-4;
+  @apply h-3.5 w-3.5;
+}
+
+.lists-sidebar__new-list-text {
+  @apply text-xs font-medium;
 }

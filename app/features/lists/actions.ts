@@ -6,7 +6,10 @@ import {
   completeParent,
   createList,
   createItem,
+  deleteList,
   deleteItem,
+  getDefaultListId,
+  getListById,
   getNodeById,
   resetCompletedItems,
   toggleItem,
@@ -201,4 +204,23 @@ export async function editListTitleAction(formData: FormData): Promise<void> {
 
   revalidateTag("lists", "max");
   redirect(listPath);
+}
+
+export async function deleteListAction(formData: FormData): Promise<void> {
+  const listId = readRequiredString(formData, "listId");
+  const currentListId = readOptionalString(formData, "currentListId") ?? listId;
+  const currentListPath = buildListPath(currentListId);
+
+  const deleted = deleteList(listId);
+  if (!deleted) {
+    redirect(`${currentListPath}?error=listDelete`);
+  }
+
+  let redirectListId = currentListId;
+  if (listId === currentListId || !getListById(currentListId)) {
+    redirectListId = getDefaultListId() ?? createList("Sin nombre").id;
+  }
+
+  revalidateTag("lists", "max");
+  redirect(buildListPath(redirectListId));
 }

@@ -2,6 +2,7 @@ import {
   completeParent,
   createList,
   createItem,
+  deleteList,
   deleteItem,
   getDefaultListId,
   getListById,
@@ -57,6 +58,18 @@ describe("services", () => {
     expect(created.title).toBe("Sin nombre");
     expect(created.id.startsWith("list-")).toBe(true);
     expect(summaries[0]?.id).toBe(created.id);
+  });
+
+  test("deleteList elimina una lista existente", () => {
+    const created = createList("Lista temporal");
+    const deleted = deleteList(created.id);
+
+    expect(deleted).toBe(true);
+    expect(getListById(created.id)).toBeUndefined();
+  });
+
+  test("deleteList retorna false para listas inexistentes", () => {
+    expect(deleteList("missing-list")).toBe(false);
   });
 
   test("updateListTitle actualiza el nombre de una lista existente", () => {

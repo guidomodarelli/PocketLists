@@ -161,6 +161,18 @@ export function createList(title = "Sin nombre"): List {
   return newList;
 }
 
+export function deleteList(listId: string): boolean {
+  const lists = getStoreLists();
+  const nextLists = lists.filter((list) => list.id !== listId);
+
+  if (nextLists.length === lists.length) {
+    return false;
+  }
+
+  writeStore(nextLists);
+  return true;
+}
+
 export function updateListTitle(listId: string, title: string): List | null {
   const normalizedTitle = title.trim();
   const list = getStoreListById(listId);

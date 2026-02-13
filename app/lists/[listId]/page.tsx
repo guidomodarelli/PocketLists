@@ -100,6 +100,13 @@ function resolveActionError(errorParam?: string): { title: string; description: 
     };
   }
 
+  if (errorParam === "listDelete") {
+    return {
+      title: "No pudimos eliminar la lista.",
+      description: "Reintentá la eliminación o recargá la página para sincronizar los datos.",
+    };
+  }
+
   return {
     title: "Ocurrió un error inesperado.",
     description: "Volvé a intentarlo en unos segundos.",

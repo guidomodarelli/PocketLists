@@ -1,5 +1,6 @@
 import {
   createListAction,
+  deleteListAction,
   confirmParentAction,
   confirmUncheckParentAction,
   createItemAction,
@@ -28,7 +29,10 @@ jest.mock("../services", () => ({
   completeParent: jest.fn(),
   createList: jest.fn(),
   createItem: jest.fn(),
+  deleteList: jest.fn(),
   deleteItem: jest.fn(),
+  getDefaultListId: jest.fn(),
+  getListById: jest.fn(),
   getNodeById: jest.fn(),
   resetCompletedItems: jest.fn(),
   toggleItem: jest.fn(),
@@ -257,6 +261,53 @@ describe("actions", () => {
 
     expect(servicesMock.createList).toHaveBeenCalledWith("Sin nombre");
     expect(revalidateTagMock).toHaveBeenCalledWith("lists", "max");
+    expect(redirectMock).toHaveBeenCalledWith("/lists/list-new");
+  });
+
+  test("deleteListAction: redirige a error cuando no se puede borrar la lista", async () => {
+    servicesMock.deleteList.mockReturnValue(false);
+
+    await expect(
+      deleteListAction(createFormData({ listId: "list-1", currentListId: "list-2" }))
+    ).rejects.toThrow("NEXT_REDIRECT:/lists/list-2?error=listDelete");
+
+    expect(redirectMock).toHaveBeenCalledWith("/lists/list-2?error=listDelete");
+  });
+
+  test("deleteListAction: al borrar una lista no activa redirige a la actual", async () => {
+    servicesMock.deleteList.mockReturnValue(true);
+    servicesMock.getListById.mockReturnValue({ id: "list-2", title: "Lista 2", items: [] });
+
+    await expect(
+      deleteListAction(createFormData({ listId: "list-1", currentListId: "list-2" }))
+    ).rejects.toThrow("NEXT_REDIRECT:/lists/list-2");
+
+    expect(revalidateTagMock).toHaveBeenCalledWith("lists", "max");
+    expect(redirectMock).toHaveBeenCalledWith("/lists/list-2");
+  });
+
+  test("deleteListAction: al borrar la lista activa redirige a otra existente", async () => {
+    servicesMock.deleteList.mockReturnValue(true);
+    servicesMock.getDefaultListId.mockReturnValue("list-2");
+
+    await expect(
+      deleteListAction(createFormData({ listId: "list-1", currentListId: "list-1" }))
+    ).rejects.toThrow("NEXT_REDIRECT:/lists/list-2");
+
+    expect(servicesMock.getDefaultListId).toHaveBeenCalledTimes(1);
+    expect(redirectMock).toHaveBeenCalledWith("/lists/list-2");
+  });
+
+  test("deleteListAction: crea una lista nueva cuando no quedan listas", async () => {
+    servicesMock.deleteList.mockReturnValue(true);
+    servicesMock.getDefaultListId.mockReturnValue(undefined);
+    servicesMock.createList.mockReturnValue({ id: "list-new", title: "Sin nombre", items: [] });
+
+    await expect(
+      deleteListAction(createFormData({ listId: "list-1", currentListId: "list-1" }))
+    ).rejects.toThrow("NEXT_REDIRECT:/lists/list-new");
+
+    expect(servicesMock.createList).toHaveBeenCalledWith("Sin nombre");
     expect(redirectMock).toHaveBeenCalledWith("/lists/list-new");
   });
 
