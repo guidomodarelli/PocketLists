@@ -70,6 +70,21 @@ describe("CompletedItemsDialog", () => {
     expect(screen.getByTestId("completed-tree-list")).toHaveTextContent("list:list-1");
   });
 
+  test("abre el dialog automáticamente cuando se solicita desde query", () => {
+    render(
+      <CompletedItemsDialog
+        nodes={[createNode()]}
+        completedCount={1}
+        canResetCompleted
+        listId="list-1"
+        openOnLoad
+      />,
+    );
+
+    expect(screen.getByText("Completados")).toBeInTheDocument();
+    expect(screen.getByText("Tenés 1 ítems completados.")).toBeInTheDocument();
+  });
+
   test("muestra link para desmarcar completados cuando corresponde", () => {
     render(
       <CompletedItemsDialog

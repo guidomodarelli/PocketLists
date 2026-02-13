@@ -40,8 +40,16 @@ jest.mock("@/app/features/lists/components/AddRootItemButton/AddRootItemButton",
 
 jest.mock("@/app/features/lists/components/CompletedItemsDialog/CompletedItemsDialog", () => ({
   __esModule: true,
-  default: ({ completedCount, listId }: { completedCount: number; listId: string }) => (
-    <div data-testid="completed-items-dialog">
+  default: ({
+    completedCount,
+    listId,
+    openOnLoad,
+  }: {
+    completedCount: number;
+    listId: string;
+    openOnLoad?: boolean;
+  }) => (
+    <div data-testid="completed-items-dialog" data-open-on-load={String(Boolean(openOnLoad))}>
       completed:{completedCount} list:{listId}
     </div>
   ),
@@ -207,6 +215,26 @@ describe("List page SSR", () => {
     expect(screen.getByTestId("tree-list-pending")).toBeInTheDocument();
     expect(screen.getByTestId("completed-items-dialog")).toHaveTextContent("completed:1");
     expect(screen.getByTestId("completed-items-dialog")).toHaveTextContent("list:list-1");
+    expect(screen.getByTestId("completed-items-dialog")).toHaveAttribute("data-open-on-load", "false");
+  });
+
+  test("propaga al modal de completados el flag de reapertura por query", async () => {
+    mockFetchResponse({
+      lists: [{ id: "list-1", title: "Lista 1" }],
+      activeList: {
+        id: "list-1",
+        title: "Lista 1",
+        items: [{ id: "completed-1", title: "Completado", completed: true, children: [] }],
+      },
+    });
+
+    const view = await ListPage({
+      params: { listId: "list-1" },
+      searchParams: { openCompleted: "true" },
+    });
+    render(view);
+
+    expect(screen.getByTestId("completed-items-dialog")).toHaveAttribute("data-open-on-load", "true");
   });
 
   test("muestra modal de confirmación reset cuando corresponde", async () => {

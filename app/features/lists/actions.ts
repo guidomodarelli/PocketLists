@@ -34,6 +34,17 @@ function readRequiredBoolean(formData: FormData, key: string): boolean {
   return value === "true";
 }
 
+function readOptionalBoolean(formData: FormData, key: string): boolean | undefined {
+  const value = formData.get(key);
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+  if (value !== "true" && value !== "false") {
+    throw new Error(`Valor inválido para "${key}".`);
+  }
+  return value === "true";
+}
+
 function readOptionalString(formData: FormData, key: string): string | undefined {
   const value = formData.get(key);
   if (value === null || value === undefined) {
@@ -102,6 +113,7 @@ export async function confirmParentAction(formData: FormData): Promise<void> {
 export async function confirmUncheckParentAction(formData: FormData): Promise<void> {
   const listId = readRequiredString(formData, "listId");
   const id = readRequiredString(formData, "id");
+  const reopenCompletedDialog = readOptionalBoolean(formData, "reopenCompletedDialog") === true;
   const currentNode = getNodeById(listId, id);
   const listPath = buildListPath(listId);
 
@@ -114,7 +126,7 @@ export async function confirmUncheckParentAction(formData: FormData): Promise<vo
     redirect(`${listPath}?error=action`);
   }
   revalidateTag("lists", "max");
-  redirect(listPath);
+  redirect(reopenCompletedDialog ? `${listPath}?openCompleted=true` : listPath);
 }
 
 export async function resetCompletedAction(formData: FormData): Promise<void> {

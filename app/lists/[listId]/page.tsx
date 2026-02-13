@@ -195,6 +195,7 @@ export default async function ListPage({ params, searchParams }: PageProps) {
   const nodeForUncheckConfirmation = confirmUncheckId ? findNode(items, confirmUncheckId) : undefined;
   const uncheckConfirmationMissing = Boolean(confirmUncheckId && !nodeForUncheckConfirmation);
   const confirmReset = getSingleParam(resolvedSearchParams, "confirmReset");
+  const openCompleted = getSingleParam(resolvedSearchParams, "openCompleted");
   const shouldConfirmReset = confirmReset === "true";
 
   if (items.length === 0) {
@@ -248,6 +249,7 @@ export default async function ListPage({ params, searchParams }: PageProps) {
       !confirmId &&
       !showResetModal
   );
+  const shouldOpenCompletedDialog = openCompleted === "true" && !showResetModal && !showUncheckModal;
 
   return (
     <div className={styles["home-page"]}>
@@ -285,6 +287,7 @@ export default async function ListPage({ params, searchParams }: PageProps) {
               completedCount={completedCount}
               canResetCompleted={canResetCompleted}
               listId={listId}
+              openOnLoad={shouldOpenCompletedDialog}
             />
           </div>
         </header>

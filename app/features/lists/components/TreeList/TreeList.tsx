@@ -607,6 +607,9 @@ export default function TreeList({ nodes, mode, listId, depth = 0 }: TreeListPro
               <form action={parentAction}>
                 <input type="hidden" name="listId" value={listId} />
                 <input type="hidden" name="id" value={parentModalAction.id} />
+                {parentModalAction.intent === "uncheck" && mode === "completed" ? (
+                  <input type="hidden" name="reopenCompletedDialog" value="true" />
+                ) : null}
                 <Button type="submit">
                   {parentModalAction.intent === "complete"
                     ? "Confirmar y completar todo"

@@ -19,6 +19,7 @@ type CompletedItemsDialogProps = {
   completedCount: number;
   canResetCompleted: boolean;
   listId: string;
+  openOnLoad?: boolean;
 };
 
 export default function CompletedItemsDialog({
@@ -26,12 +27,16 @@ export default function CompletedItemsDialog({
   completedCount,
   canResetCompleted,
   listId,
+  openOnLoad = false,
 }: CompletedItemsDialogProps) {
   const listPath = `/lists/${encodeURIComponent(listId)}`;
-  const dialogStateKey = canResetCompleted ? "with-completed-items" : "without-completed-items";
+  const dialogStateKey = [
+    canResetCompleted ? "with-completed-items" : "without-completed-items",
+    openOnLoad ? "open-on-load" : "manual-open",
+  ].join("-");
 
   return (
-    <Dialog key={dialogStateKey}>
+    <Dialog key={dialogStateKey} defaultOpen={openOnLoad}>
       <DialogTrigger asChild>
         <Button type="button" variant="outline" className={styles["completed-items-dialog__trigger"]}>
           Ver completados
