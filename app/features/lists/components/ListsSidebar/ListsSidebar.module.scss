@@ -1,11 +1,11 @@
 @reference "tailwindcss";
 
 .lists-sidebar__header {
-  @apply p-3;
+  @apply overflow-visible p-3;
 }
 
 .lists-sidebar__header-row {
-  @apply flex items-center justify-between gap-2;
+  @apply relative flex items-center justify-between gap-2;
 }
 
 .lists-sidebar__title {
@@ -30,6 +30,18 @@
 
 .lists-sidebar__desktop-trigger {
   @apply hidden text-slate-500 md:inline-flex md:h-7 md:w-7;
+}
+
+:global([data-collapsible="icon"]) .lists-sidebar__desktop-trigger {
+  @apply md:inline-flex md:h-7 md:w-7 md:items-center md:justify-center md:rounded-full md:border md:border-slate-200 md:bg-white md:shadow-sm;
+}
+
+:global([data-side="left"][data-collapsible="icon"]) .lists-sidebar__desktop-trigger {
+  @apply md:absolute md:top-1/2 md:-right-12 md:z-30 md:-translate-y-1/2;
+}
+
+:global([data-side="right"][data-collapsible="icon"]) .lists-sidebar__desktop-trigger {
+  @apply md:absolute md:top-1/2 md:-left-10 md:z-30 md:-translate-y-1/2;
 }
 
 .lists-sidebar__group-header {
