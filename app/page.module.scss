@@ -16,6 +16,14 @@
   @apply text-3xl font-semibold tracking-tight text-slate-900;
 }
 
+.home-page__title-row {
+  @apply flex items-center gap-2;
+}
+
+.home-page__sidebar-trigger {
+  @apply md:hidden;
+}
+
 .home-page__subtitle {
   @apply mt-2 text-sm text-slate-600;
 }

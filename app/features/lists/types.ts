@@ -5,6 +5,17 @@ export type ItemNode = {
   children: ItemNode[];
 };
 
+export type List = {
+  id: string;
+  title: string;
+  items: ItemNode[];
+};
+
+export type ListSummary = {
+  id: string;
+  title: string;
+};
+
 export type TreeMode = "pending" | "completed";
 
 export type VisibleNode = {
@@ -17,7 +28,8 @@ export type VisibleNode = {
 };
 
 export type ListsResponse = {
-  items: ItemNode[];
+  lists: ListSummary[];
+  activeList: List;
 };
 
 export type ApiError = {

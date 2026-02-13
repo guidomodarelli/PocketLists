@@ -1,7 +1,11 @@
 import {
   completeParent,
+  createList,
   createItem,
   deleteItem,
+  getDefaultListId,
+  getListById,
+  getListSummaries,
   getLists,
   getNodeById,
   resetCompletedItems,
@@ -18,65 +22,104 @@ function resetStore() {
   delete (globalThis as GlobalStore).__pocketListsStore;
 }
 
+const DEFAULT_LIST_ID = "list-travel";
+
 describe("services", () => {
   beforeEach(() => {
     resetStore();
   });
 
   test("getLists inicializa y normaliza el árbol", () => {
-    const items = getLists();
-    const clothing = items.find((item) => item.id === "clothing");
+    const lists = getLists();
+    const clothing = lists[0]?.items.find((item) => item.id === "clothing");
 
-    expect(items.length).toBeGreaterThan(0);
+    expect(lists.length).toBeGreaterThan(0);
     expect(clothing?.completed).toBe(true);
   });
 
+  test("getDefaultListId devuelve el id de la primera lista", () => {
+    expect(getDefaultListId()).toBe(DEFAULT_LIST_ID);
+  });
+
+  test("getListById devuelve undefined para listas inexistentes", () => {
+    expect(getListById("missing-list")).toBeUndefined();
+  });
+
+  test("getListSummaries expone id y title de todas las listas", () => {
+    expect(getListSummaries()).toEqual([{ id: DEFAULT_LIST_ID, title: "Lista de viaje" }]);
+  });
+
+  test("createList agrega una nueva lista al inicio", () => {
+    const created = createList();
+    const summaries = getListSummaries();
+
+    expect(created.title).toBe("Sin nombre");
+    expect(created.id.startsWith("list-")).toBe(true);
+    expect(summaries[0]?.id).toBe(created.id);
+  });
+
+  test("migra store legacy en memoria con shape { items: [...] }", () => {
+    (globalThis as GlobalStore).__pocketListsStore = {
+      items: [
+        {
+          id: "legacy-root",
+          title: "Legacy",
+          completed: false,
+          children: [],
+        },
+      ],
+    };
+
+    expect(getDefaultListId()).toBe(DEFAULT_LIST_ID);
+    expect(getNodeById(DEFAULT_LIST_ID, "legacy-root")).toBeDefined();
+  });
+
   test("getNodeById devuelve undefined para ids inexistentes", () => {
-    expect(getNodeById("missing")).toBeUndefined();
+    expect(getNodeById(DEFAULT_LIST_ID, "missing")).toBeUndefined();
   });
 
   test("toggleItem actualiza hoja simple", () => {
-    const updated = toggleItem("book", true);
-    const node = updated.find((item) => item.id === "entertainment")?.children.find((c) => c.id === "book");
+    const updated = toggleItem(DEFAULT_LIST_ID, "book", true);
+    const node = updated?.find((item) => item.id === "entertainment")?.children.find((c) => c.id === "book");
 
     expect(node?.completed).toBe(true);
   });
 
   test("toggleItem sobre padre completa todo su subárbol", () => {
-    const updated = toggleItem("entertainment", true);
-    const entertainment = updated.find((item) => item.id === "entertainment");
+    const updated = toggleItem(DEFAULT_LIST_ID, "entertainment", true);
+    const entertainment = updated?.find((item) => item.id === "entertainment");
 
     expect(entertainment?.completed).toBe(true);
     expect(entertainment?.children.every((child) => child.completed)).toBe(true);
   });
 
   test("completeParent completa padre y descendientes", () => {
-    const updated = completeParent("travel-day");
-    const parent = updated.find((item) => item.id === "travel-day");
+    const updated = completeParent(DEFAULT_LIST_ID, "travel-day");
+    const parent = updated?.find((item) => item.id === "travel-day");
 
     expect(parent?.completed).toBe(true);
     expect(parent?.children.every((child) => child.completed)).toBe(true);
   });
 
   test("uncheckParent desmarca padre y descendientes", () => {
-    completeParent("travel-day");
-    const updated = uncheckParent("travel-day");
-    const parent = updated.find((item) => item.id === "travel-day");
+    completeParent(DEFAULT_LIST_ID, "travel-day");
+    const updated = uncheckParent(DEFAULT_LIST_ID, "travel-day");
+    const parent = updated?.find((item) => item.id === "travel-day");
 
     expect(parent?.completed).toBe(false);
     expect(parent?.children.every((child) => !child.completed)).toBe(true);
   });
 
   test("resetCompletedItems desmarca todo el árbol", () => {
-    completeParent("clothing");
-    const updated = resetCompletedItems();
+    completeParent(DEFAULT_LIST_ID, "clothing");
+    const updated = resetCompletedItems(DEFAULT_LIST_ID);
 
     const hasCompleted = JSON.stringify(updated).includes('"completed":true');
     expect(hasCompleted).toBe(false);
   });
 
   test("createItem agrega item raíz cuando no hay parentId", () => {
-    const updated = createItem("Nuevo item raíz");
+    const updated = createItem(DEFAULT_LIST_ID, "Nuevo item raíz");
     const newRoot = updated?.find((item) => item.title === "Nuevo item raíz");
 
     expect(updated).not.toBeNull();
@@ -86,7 +129,7 @@ describe("services", () => {
   });
 
   test("createItem agrega item hijo cuando parentId existe", () => {
-    const updated = createItem("Hijo nuevo", "entertainment");
+    const updated = createItem(DEFAULT_LIST_ID, "Hijo nuevo", "entertainment");
     const entertainment = updated?.find((item) => item.id === "entertainment");
     const child = entertainment?.children.find((item) => item.title === "Hijo nuevo");
 
@@ -97,42 +140,52 @@ describe("services", () => {
   });
 
   test("createItem retorna null cuando parentId no existe", () => {
-    const result = createItem("Nodo huérfano", "missing-parent");
+    const result = createItem(DEFAULT_LIST_ID, "Nodo huérfano", "missing-parent");
     expect(result).toBeNull();
   });
 
   test("deleteItem elimina una hoja existente", () => {
-    const updated = deleteItem("book");
-    const removed = getNodeById("book");
+    const updated = deleteItem(DEFAULT_LIST_ID, "book");
+    const removed = getNodeById(DEFAULT_LIST_ID, "book");
 
     expect(updated).not.toBeNull();
     expect(removed).toBeUndefined();
   });
 
   test("deleteItem elimina un parent junto a sus descendientes", () => {
-    const updated = deleteItem("travel-day");
+    const updated = deleteItem(DEFAULT_LIST_ID, "travel-day");
 
     expect(updated).not.toBeNull();
-    expect(getNodeById("travel-day")).toBeUndefined();
-    expect(getNodeById("hygiene-kit")).toBeUndefined();
-    expect(getNodeById("toothbrush")).toBeUndefined();
+    expect(getNodeById(DEFAULT_LIST_ID, "travel-day")).toBeUndefined();
+    expect(getNodeById(DEFAULT_LIST_ID, "hygiene-kit")).toBeUndefined();
+    expect(getNodeById(DEFAULT_LIST_ID, "toothbrush")).toBeUndefined();
   });
 
   test("deleteItem retorna null cuando el id no existe", () => {
-    const result = deleteItem("missing-node");
+    const result = deleteItem(DEFAULT_LIST_ID, "missing-node");
     expect(result).toBeNull();
   });
 
   test("updateItemTitle actualiza el texto de un ítem existente", () => {
-    const updated = updateItemTitle("book", "Libro actualizado");
-    const node = getNodeById("book");
+    const updated = updateItemTitle(DEFAULT_LIST_ID, "book", "Libro actualizado");
+    const node = getNodeById(DEFAULT_LIST_ID, "book");
 
     expect(updated).not.toBeNull();
     expect(node?.title).toBe("Libro actualizado");
   });
 
   test("updateItemTitle retorna null cuando el id no existe", () => {
-    const result = updateItemTitle("missing-node", "Nuevo título");
+    const result = updateItemTitle(DEFAULT_LIST_ID, "missing-node", "Nuevo título");
     expect(result).toBeNull();
+  });
+
+  test("operaciones por ítem devuelven null cuando no existe la lista", () => {
+    expect(toggleItem("missing-list", "book", true)).toBeNull();
+    expect(completeParent("missing-list", "travel-day")).toBeNull();
+    expect(uncheckParent("missing-list", "travel-day")).toBeNull();
+    expect(resetCompletedItems("missing-list")).toBeNull();
+    expect(createItem("missing-list", "Nuevo")).toBeNull();
+    expect(deleteItem("missing-list", "book")).toBeNull();
+    expect(updateItemTitle("missing-list", "book", "Nuevo título")).toBeNull();
   });
 });

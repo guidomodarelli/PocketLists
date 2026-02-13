@@ -4,6 +4,7 @@ import { revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import {
   completeParent,
+  createList,
   createItem,
   deleteItem,
   getNodeById,
@@ -41,104 +42,140 @@ function readOptionalString(formData: FormData, key: string): string | undefined
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
+function buildListPath(listId: string): string {
+  return `/lists/${encodeURIComponent(listId)}`;
+}
+
 export async function toggleItemAction(formData: FormData): Promise<void> {
+  const listId = readRequiredString(formData, "listId");
   const id = readRequiredString(formData, "id");
   const nextCompleted = readRequiredBoolean(formData, "nextCompleted");
-  const currentNode = getNodeById(id);
+  const currentNode = getNodeById(listId, id);
+  const listPath = buildListPath(listId);
 
   if (!currentNode) {
-    redirect("/?error=action");
+    redirect(`${listPath}?error=action`);
   }
 
   if (nextCompleted && currentNode.children.length > 0 && !currentNode.completed) {
-    redirect(`/?confirm=${encodeURIComponent(id)}`);
+    redirect(`${listPath}?confirm=${encodeURIComponent(id)}`);
   }
 
-  toggleItem(id, nextCompleted);
+  const result = toggleItem(listId, id, nextCompleted);
+  if (!result) {
+    redirect(`${listPath}?error=action`);
+  }
   revalidateTag("lists", "max");
-  redirect("/");
+  redirect(listPath);
 }
 
 export async function confirmParentAction(formData: FormData): Promise<void> {
+  const listId = readRequiredString(formData, "listId");
   const id = readRequiredString(formData, "id");
-  const currentNode = getNodeById(id);
+  const currentNode = getNodeById(listId, id);
+  const listPath = buildListPath(listId);
 
   if (!currentNode) {
-    redirect("/?error=action");
+    redirect(`${listPath}?error=action`);
   }
 
-  completeParent(id);
+  const result = completeParent(listId, id);
+  if (!result) {
+    redirect(`${listPath}?error=action`);
+  }
   revalidateTag("lists", "max");
-  redirect("/");
+  redirect(listPath);
 }
 
 export async function confirmUncheckParentAction(formData: FormData): Promise<void> {
+  const listId = readRequiredString(formData, "listId");
   const id = readRequiredString(formData, "id");
-  const currentNode = getNodeById(id);
+  const currentNode = getNodeById(listId, id);
+  const listPath = buildListPath(listId);
 
   if (!currentNode) {
-    redirect("/?error=action");
+    redirect(`${listPath}?error=action`);
   }
 
-  uncheckParent(id);
+  const result = uncheckParent(listId, id);
+  if (!result) {
+    redirect(`${listPath}?error=action`);
+  }
   revalidateTag("lists", "max");
-  redirect("/");
+  redirect(listPath);
 }
 
-export async function resetCompletedAction(): Promise<void> {
-  resetCompletedItems();
+export async function resetCompletedAction(formData: FormData): Promise<void> {
+  const listId = readRequiredString(formData, "listId");
+  const listPath = buildListPath(listId);
+  const result = resetCompletedItems(listId);
+  if (!result) {
+    redirect(`${listPath}?error=action`);
+  }
   revalidateTag("lists", "max");
-  redirect("/");
+  redirect(listPath);
 }
 
 export async function createItemAction(formData: FormData): Promise<void> {
+  const listId = readRequiredString(formData, "listId");
   const title = readRequiredString(formData, "title");
   const parentId = readOptionalString(formData, "parentId");
+  const listPath = buildListPath(listId);
 
-  if (parentId && !getNodeById(parentId)) {
-    redirect("/?error=add");
+  if (parentId && !getNodeById(listId, parentId)) {
+    redirect(`${listPath}?error=add`);
   }
 
-  const result = createItem(title, parentId);
+  const result = createItem(listId, title, parentId);
   if (!result) {
-    redirect("/?error=add");
+    redirect(`${listPath}?error=add`);
   }
 
   revalidateTag("lists", "max");
-  redirect("/");
+  redirect(listPath);
 }
 
 export async function deleteItemAction(formData: FormData): Promise<void> {
+  const listId = readRequiredString(formData, "listId");
   const id = readRequiredString(formData, "id");
-  const currentNode = getNodeById(id);
+  const currentNode = getNodeById(listId, id);
+  const listPath = buildListPath(listId);
 
   if (!currentNode) {
-    redirect("/?error=delete");
+    redirect(`${listPath}?error=delete`);
   }
 
-  const result = deleteItem(id);
+  const result = deleteItem(listId, id);
   if (!result) {
-    redirect("/?error=delete");
+    redirect(`${listPath}?error=delete`);
   }
 
   revalidateTag("lists", "max");
-  redirect("/");
+  redirect(listPath);
 }
 
 export async function editItemTitleAction(formData: FormData): Promise<void> {
+  const listId = readRequiredString(formData, "listId");
   const id = readRequiredString(formData, "id");
   const title = readRequiredString(formData, "title");
-  const currentNode = getNodeById(id);
+  const currentNode = getNodeById(listId, id);
+  const listPath = buildListPath(listId);
 
   if (!currentNode) {
-    redirect("/?error=edit");
+    redirect(`${listPath}?error=edit`);
   }
 
-  const result = updateItemTitle(id, title);
+  const result = updateItemTitle(listId, id, title);
   if (!result) {
-    redirect("/?error=edit");
+    redirect(`${listPath}?error=edit`);
   }
 
   revalidateTag("lists", "max");
-  redirect("/");
+  redirect(listPath);
+}
+
+export async function createListAction(): Promise<void> {
+  const newList = createList("Sin nombre");
+  revalidateTag("lists", "max");
+  redirect(buildListPath(newList.id));
 }

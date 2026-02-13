@@ -18,13 +18,17 @@ type CompletedItemsDialogProps = {
   nodes: VisibleNode[];
   completedCount: number;
   canResetCompleted: boolean;
+  listId: string;
 };
 
 export default function CompletedItemsDialog({
   nodes,
   completedCount,
   canResetCompleted,
+  listId,
 }: CompletedItemsDialogProps) {
+  const listPath = `/lists/${encodeURIComponent(listId)}`;
+
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -41,13 +45,13 @@ export default function CompletedItemsDialog({
         </DialogHeader>
         {canResetCompleted ? (
           <div className={styles["completed-items-dialog__actions"]}>
-            <Link href="/?confirmReset=true" className={styles["completed-items-dialog__reset-link"]}>
+            <Link href={`${listPath}?confirmReset=true`} className={styles["completed-items-dialog__reset-link"]}>
               Desmarcar completados
             </Link>
           </div>
         ) : null}
         <div className={styles["completed-items-dialog__list"]}>
-          <TreeList nodes={nodes} mode="completed" />
+          <TreeList nodes={nodes} mode="completed" listId={listId} />
         </div>
       </DialogContent>
     </Dialog>

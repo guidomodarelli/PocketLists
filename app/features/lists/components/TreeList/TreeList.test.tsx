@@ -101,14 +101,14 @@ function createNode(overrides: Partial<VisibleNode> = {}): VisibleNode {
 
 describe("TreeList", () => {
   test("muestra mensaje vacío en raíz sin nodos", () => {
-    render(<TreeList nodes={[]} mode="pending" />);
+    render(<TreeList nodes={[]} mode="pending" listId="list-1" />);
     expect(screen.getByText("No hay ítems para mostrar en esta vista.")).toBeInTheDocument();
   });
 
   test("en raíz pending abre borrador inline al recibir evento global de alta", () => {
-    render(<TreeList nodes={[]} mode="pending" />);
+    render(<TreeList nodes={[]} mode="pending" listId="list-1" />);
     act(() => {
-      window.dispatchEvent(new CustomEvent("lists:add-root-draft"));
+      window.dispatchEvent(new CustomEvent("lists:add-root-draft", { detail: { listId: "list-1" } }));
     });
 
     const input = screen.getByPlaceholderText("Nuevo ítem");
@@ -117,10 +117,20 @@ describe("TreeList", () => {
     expect(screen.getByRole("button", { name: "Guardar" })).toBeInTheDocument();
   });
 
-  test("si pierde foco fuera del borrador raíz, descarta el alta", async () => {
-    render(<TreeList nodes={[]} mode="pending" />);
+  test("ignora evento global de alta cuando pertenece a otra lista", () => {
+    render(<TreeList nodes={[]} mode="pending" listId="list-1" />);
     act(() => {
-      window.dispatchEvent(new CustomEvent("lists:add-root-draft"));
+      window.dispatchEvent(new CustomEvent("lists:add-root-draft", { detail: { listId: "list-2" } }));
+    });
+
+    expect(screen.queryByPlaceholderText("Nuevo ítem")).not.toBeInTheDocument();
+    expect(screen.getByText("No hay ítems para mostrar en esta vista.")).toBeInTheDocument();
+  });
+
+  test("si pierde foco fuera del borrador raíz, descarta el alta", async () => {
+    render(<TreeList nodes={[]} mode="pending" listId="list-1" />);
+    act(() => {
+      window.dispatchEvent(new CustomEvent("lists:add-root-draft", { detail: { listId: "list-1" } }));
     });
 
     const input = screen.getByPlaceholderText("Nuevo ítem");
@@ -140,7 +150,7 @@ describe("TreeList", () => {
       children: [createNode({ id: "child", title: "Hijo" })],
     });
 
-    render(<TreeList nodes={[parent]} mode="pending" />);
+    render(<TreeList nodes={[parent]} mode="pending" listId="list-1" />);
     fireEvent.click(screen.getByLabelText("Cambiar estado de Padre"));
 
     expect(screen.getByTestId("alert-dialog")).toBeInTheDocument();
@@ -156,7 +166,7 @@ describe("TreeList", () => {
       children: [createNode({ id: "child", title: "Hijo", completed: true })],
     });
 
-    render(<TreeList nodes={[parent]} mode="completed" />);
+    render(<TreeList nodes={[parent]} mode="completed" listId="list-1" />);
     fireEvent.click(screen.getByLabelText("Cambiar estado de Padre completo"));
 
     expect(screen.getByTestId("alert-dialog")).toBeInTheDocument();
@@ -174,7 +184,7 @@ describe("TreeList", () => {
       children: [createNode({ id: "child-completed", title: "Hijo", completed: true })],
     });
 
-    render(<TreeList nodes={[partialParent]} mode="completed" />);
+    render(<TreeList nodes={[partialParent]} mode="completed" listId="list-1" />);
     fireEvent.click(screen.getByLabelText("Cambiar estado de Padre parcial"));
 
     expect(screen.getByTestId("alert-dialog")).toBeInTheDocument();
@@ -185,7 +195,7 @@ describe("TreeList", () => {
     const requestSubmitSpy = jest.spyOn(HTMLFormElement.prototype, "requestSubmit");
     const leaf = createNode({ id: "leaf", title: "Hoja", children: [] });
 
-    render(<TreeList nodes={[leaf]} mode="pending" />);
+    render(<TreeList nodes={[leaf]} mode="pending" listId="list-1" />);
     fireEvent.click(screen.getByLabelText("Cambiar estado de Hoja"));
 
     expect(requestSubmitSpy).toHaveBeenCalledTimes(1);
@@ -201,7 +211,7 @@ describe("TreeList", () => {
       children: [createNode({ id: "leaf-child", title: "Hoja hija", children: [] })],
     });
 
-    render(<TreeList nodes={[tree]} mode="pending" />);
+    render(<TreeList nodes={[tree]} mode="pending" listId="list-1" />);
     fireEvent.click(screen.getByLabelText("Cambiar estado de Hoja hija"));
 
     expect(requestSubmitSpy).toHaveBeenCalledTimes(1);
@@ -212,7 +222,7 @@ describe("TreeList", () => {
   test("al clickear + abre edición inline de nuevo hijo sin dialog", () => {
     const parent = createNode({ id: "parent-add", title: "Padre para hijo", children: [] });
 
-    render(<TreeList nodes={[parent]} mode="pending" />);
+    render(<TreeList nodes={[parent]} mode="pending" listId="list-1" />);
     fireEvent.click(screen.getByLabelText("Agregar hijo a Padre para hijo"));
 
     const input = screen.getByPlaceholderText("Nuevo hijo");
@@ -230,7 +240,7 @@ describe("TreeList", () => {
   test("si pierde foco fuera del borrador de hijo, descarta el alta", async () => {
     const parent = createNode({ id: "parent-discard", title: "Padre descartar", children: [] });
 
-    render(<TreeList nodes={[parent]} mode="pending" />);
+    render(<TreeList nodes={[parent]} mode="pending" listId="list-1" />);
     fireEvent.click(screen.getByLabelText("Agregar hijo a Padre descartar"));
 
     const input = screen.getByPlaceholderText("Nuevo hijo");
@@ -245,7 +255,7 @@ describe("TreeList", () => {
   test("abre dialog de eliminación para ítem hoja", () => {
     const leaf = createNode({ id: "leaf-delete", title: "Hoja para borrar", children: [] });
 
-    render(<TreeList nodes={[leaf]} mode="pending" />);
+    render(<TreeList nodes={[leaf]} mode="pending" listId="list-1" />);
     fireEvent.click(screen.getByLabelText("Abrir acciones de Hoja para borrar"));
     fireEvent.click(screen.getByLabelText("Eliminar Hoja para borrar"));
 
@@ -260,7 +270,7 @@ describe("TreeList", () => {
       children: [createNode({ id: "child", title: "Child" })],
     });
 
-    render(<TreeList nodes={[parent]} mode="pending" />);
+    render(<TreeList nodes={[parent]} mode="pending" listId="list-1" />);
     fireEvent.click(screen.getByLabelText("Abrir acciones de Parent para borrar"));
     fireEvent.click(screen.getByLabelText("Eliminar Parent para borrar"));
 
@@ -271,7 +281,7 @@ describe("TreeList", () => {
   test("permite editar inline desde el dropdown y muestra input con Guardar", () => {
     const node = createNode({ id: "edit-node", title: "Título original", children: [] });
 
-    render(<TreeList nodes={[node]} mode="pending" />);
+    render(<TreeList nodes={[node]} mode="pending" listId="list-1" />);
     fireEvent.click(screen.getByLabelText("Abrir acciones de Título original"));
     fireEvent.click(screen.getByLabelText("Editar Título original"));
 
@@ -285,7 +295,7 @@ describe("TreeList", () => {
     const nodeA = createNode({ id: "edit-a", title: "Ítem A", children: [] });
     const nodeB = createNode({ id: "edit-b", title: "Ítem B", children: [] });
 
-    render(<TreeList nodes={[nodeA, nodeB]} mode="pending" />);
+    render(<TreeList nodes={[nodeA, nodeB]} mode="pending" listId="list-1" />);
     fireEvent.click(screen.getByLabelText("Abrir acciones de Ítem A"));
     fireEvent.click(screen.getByLabelText("Editar Ítem A"));
 
@@ -296,7 +306,7 @@ describe("TreeList", () => {
   test("si pierde foco fuera del input group cancela edición y descarta cambios", async () => {
     const node = createNode({ id: "edit-cancel", title: "Texto base", children: [] });
 
-    render(<TreeList nodes={[node]} mode="pending" />);
+    render(<TreeList nodes={[node]} mode="pending" listId="list-1" />);
     fireEvent.click(screen.getByLabelText("Abrir acciones de Texto base"));
     fireEvent.click(screen.getByLabelText("Editar Texto base"));
 

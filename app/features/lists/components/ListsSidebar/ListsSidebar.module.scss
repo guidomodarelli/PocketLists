@@ -1,0 +1,25 @@
+@reference "tailwindcss";
+
+.lists-sidebar__header {
+  @apply p-3;
+}
+
+.lists-sidebar__title {
+  @apply text-sm font-semibold text-slate-900;
+}
+
+.lists-sidebar__item-title {
+  @apply truncate;
+}
+
+.lists-sidebar__new-list-form {
+  @apply p-2;
+}
+
+.lists-sidebar__new-list-button {
+  @apply w-full justify-start gap-2;
+}
+
+.lists-sidebar__new-list-icon {
+  @apply h-4 w-4;
+}

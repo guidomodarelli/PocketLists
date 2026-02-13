@@ -40,6 +40,7 @@ import styles from "./TreeList.module.scss";
 type TreeListProps = {
   nodes: VisibleNode[];
   mode: TreeMode;
+  listId: string;
   depth?: number;
 };
 
@@ -59,7 +60,7 @@ type DeleteModalAction =
     }
   | null;
 
-export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
+export default function TreeList({ nodes, mode, listId, depth = 0 }: TreeListProps) {
   const [parentModalAction, setParentModalAction] = useState<ParentModalAction>(null);
   const [deleteModalAction, setDeleteModalAction] = useState<DeleteModalAction>(null);
   const [editingItem, setEditingItem] = useState<{ id: string; title: string } | null>(null);
@@ -152,7 +153,11 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
       return;
     }
 
-    const handleAddRootDraft = () => {
+    const handleAddRootDraft = (event: Event) => {
+      const customEvent = event as CustomEvent<{ listId?: string }>;
+      if (customEvent.detail?.listId !== listId) {
+        return;
+      }
       ignoreDraftRootBlurUntilRef.current = Date.now() + 250;
       setEditingItem(null);
       setDraftChild(null);
@@ -161,7 +166,7 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
 
     window.addEventListener("lists:add-root-draft", handleAddRootDraft);
     return () => window.removeEventListener("lists:add-root-draft", handleAddRootDraft);
-  }, [mode, depth]);
+  }, [mode, listId, depth]);
 
   if (nodes.length === 0 && depth === 0 && !hasDraftRoot) {
     return <div className={styles["tree-list__empty"]}>No hay ítems para mostrar en esta vista.</div>;
@@ -211,6 +216,7 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
                       setDraftRootTitle(null);
                     }}
                   >
+                    <input type="hidden" name="listId" value={listId} />
                     <InputGroup className={styles["tree-list__edit-input-group"]}>
                       <InputGroupInput
                         ref={draftRootInputRef}
@@ -309,6 +315,7 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
                     action={toggleItemAction}
                     className={styles["tree-list__toggle-form"]}
                   >
+                    <input type="hidden" name="listId" value={listId} />
                     <input type="hidden" name="id" value={node.id} />
                     <input type="hidden" name="nextCompleted" value={nextCompletedValue} />
                     <Checkbox
@@ -339,6 +346,7 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
                           setEditingItem(null);
                         }}
                       >
+                        <input type="hidden" name="listId" value={listId} />
                         <input type="hidden" name="id" value={node.id} />
                         <InputGroup className={styles["tree-list__edit-input-group"]}>
                           <InputGroupInput
@@ -487,6 +495,7 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
                               setDraftChild(null);
                             }}
                           >
+                            <input type="hidden" name="listId" value={listId} />
                             <input type="hidden" name="parentId" value={node.id} />
                             <InputGroup className={styles["tree-list__edit-input-group"]}>
                               <InputGroupInput
@@ -522,7 +531,9 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
                   </li>
                 </ul>
               ) : null}
-              {node.children.length > 0 ? <TreeList nodes={node.children} mode={mode} depth={depth + 1} /> : null}
+              {node.children.length > 0 ? (
+                <TreeList nodes={node.children} mode={mode} listId={listId} depth={depth + 1} />
+              ) : null}
             </li>
           );
         })}
@@ -563,6 +574,7 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
             </DialogClose>
             {parentModalAction ? (
               <form action={parentAction}>
+                <input type="hidden" name="listId" value={listId} />
                 <input type="hidden" name="id" value={parentModalAction.id} />
                 <Button type="submit">
                   {parentModalAction.intent === "complete"
@@ -608,6 +620,7 @@ export default function TreeList({ nodes, mode, depth = 0 }: TreeListProps) {
             </DialogClose>
             {deleteModalAction ? (
               <form action={deleteItemAction}>
+                <input type="hidden" name="listId" value={listId} />
                 <input type="hidden" name="id" value={deleteModalAction.id} />
                 <Button type="submit" variant="destructive">
                   Confirmar eliminación

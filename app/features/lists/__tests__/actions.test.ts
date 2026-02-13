@@ -1,9 +1,10 @@
 import {
-  editItemTitleAction,
+  createListAction,
   confirmParentAction,
   confirmUncheckParentAction,
   createItemAction,
   deleteItemAction,
+  editItemTitleAction,
   resetCompletedAction,
   toggleItemAction,
 } from "../actions";
@@ -24,6 +25,7 @@ jest.mock("next/navigation", () => ({
 
 jest.mock("../services", () => ({
   completeParent: jest.fn(),
+  createList: jest.fn(),
   createItem: jest.fn(),
   deleteItem: jest.fn(),
   getNodeById: jest.fn(),
@@ -47,24 +49,30 @@ describe("actions", () => {
   });
 
   test("toggleItemAction: falta id requerido", async () => {
-    await expect(toggleItemAction(createFormData({ nextCompleted: "true" }))).rejects.toThrow(
+    await expect(toggleItemAction(createFormData({ listId: "list-1", nextCompleted: "true" }))).rejects.toThrow(
       'Falta el campo requerido "id".'
     );
   });
 
-  test("toggleItemAction: valor boolean inválido", async () => {
-    await expect(toggleItemAction(createFormData({ id: "abc", nextCompleted: "invalid" }))).rejects.toThrow(
-      'Valor inválido para "nextCompleted".'
+  test("toggleItemAction: falta listId requerido", async () => {
+    await expect(toggleItemAction(createFormData({ id: "abc", nextCompleted: "true" }))).rejects.toThrow(
+      'Falta el campo requerido "listId".'
     );
+  });
+
+  test("toggleItemAction: valor boolean inválido", async () => {
+    await expect(
+      toggleItemAction(createFormData({ listId: "list-1", id: "abc", nextCompleted: "invalid" }))
+    ).rejects.toThrow('Valor inválido para "nextCompleted".');
   });
 
   test("toggleItemAction: redirige a error cuando no existe el nodo", async () => {
     servicesMock.getNodeById.mockReturnValue(undefined);
 
-    await expect(toggleItemAction(createFormData({ id: "missing", nextCompleted: "true" }))).rejects.toThrow(
-      "NEXT_REDIRECT:/?error=action"
-    );
-    expect(redirectMock).toHaveBeenCalledWith("/?error=action");
+    await expect(
+      toggleItemAction(createFormData({ listId: "list-1", id: "missing", nextCompleted: "true" }))
+    ).rejects.toThrow("NEXT_REDIRECT:/lists/list-1?error=action");
+    expect(redirectMock).toHaveBeenCalledWith("/lists/list-1?error=action");
   });
 
   test("toggleItemAction: redirige a confirm para padre no completado", async () => {
@@ -75,8 +83,10 @@ describe("actions", () => {
       children: [{ id: "child", title: "Child", completed: false, children: [] }],
     });
 
-    await expect(toggleItemAction(createFormData({ id: "parent", nextCompleted: "true" }))).rejects.toThrow(
-      "NEXT_REDIRECT:/?confirm=parent"
+    await expect(
+      toggleItemAction(createFormData({ listId: "list-1", id: "parent", nextCompleted: "true" }))
+    ).rejects.toThrow(
+      "NEXT_REDIRECT:/lists/list-1?confirm=parent"
     );
   });
 
@@ -88,20 +98,22 @@ describe("actions", () => {
       children: [],
     });
 
-    await expect(toggleItemAction(createFormData({ id: "leaf", nextCompleted: "true" }))).rejects.toThrow(
-      "NEXT_REDIRECT:/"
-    );
+    servicesMock.toggleItem.mockReturnValue([{ id: "leaf" }]);
 
-    expect(servicesMock.toggleItem).toHaveBeenCalledWith("leaf", true);
+    await expect(
+      toggleItemAction(createFormData({ listId: "list-1", id: "leaf", nextCompleted: "true" }))
+    ).rejects.toThrow("NEXT_REDIRECT:/lists/list-1");
+
+    expect(servicesMock.toggleItem).toHaveBeenCalledWith("list-1", "leaf", true);
     expect(revalidateTagMock).toHaveBeenCalledWith("lists", "max");
-    expect(redirectMock).toHaveBeenCalledWith("/");
+    expect(redirectMock).toHaveBeenCalledWith("/lists/list-1");
   });
 
   test("confirmParentAction: redirige error si no existe el nodo", async () => {
     servicesMock.getNodeById.mockReturnValue(undefined);
 
-    await expect(confirmParentAction(createFormData({ id: "missing" }))).rejects.toThrow(
-      "NEXT_REDIRECT:/?error=action"
+    await expect(confirmParentAction(createFormData({ listId: "list-1", id: "missing" }))).rejects.toThrow(
+      "NEXT_REDIRECT:/lists/list-1?error=action"
     );
   });
 
@@ -113,8 +125,12 @@ describe("actions", () => {
       children: [{}],
     });
 
-    await expect(confirmParentAction(createFormData({ id: "parent" }))).rejects.toThrow("NEXT_REDIRECT:/");
-    expect(servicesMock.completeParent).toHaveBeenCalledWith("parent");
+    servicesMock.completeParent.mockReturnValue([{ id: "parent" }]);
+
+    await expect(confirmParentAction(createFormData({ listId: "list-1", id: "parent" }))).rejects.toThrow(
+      "NEXT_REDIRECT:/lists/list-1"
+    );
+    expect(servicesMock.completeParent).toHaveBeenCalledWith("list-1", "parent");
   });
 
   test("confirmUncheckParentAction: desmarca y redirige en happy path", async () => {
@@ -125,22 +141,30 @@ describe("actions", () => {
       children: [{}],
     });
 
-    await expect(confirmUncheckParentAction(createFormData({ id: "parent" }))).rejects.toThrow(
-      "NEXT_REDIRECT:/"
+    servicesMock.uncheckParent.mockReturnValue([{ id: "parent" }]);
+
+    await expect(confirmUncheckParentAction(createFormData({ listId: "list-1", id: "parent" }))).rejects.toThrow(
+      "NEXT_REDIRECT:/lists/list-1"
     );
-    expect(servicesMock.uncheckParent).toHaveBeenCalledWith("parent");
+    expect(servicesMock.uncheckParent).toHaveBeenCalledWith("list-1", "parent");
   });
 
   test("resetCompletedAction: resetea y redirige", async () => {
-    await expect(resetCompletedAction()).rejects.toThrow("NEXT_REDIRECT:/");
+    servicesMock.resetCompletedItems.mockReturnValue([{ id: "node-1" }]);
+
+    await expect(resetCompletedAction(createFormData({ listId: "list-1" }))).rejects.toThrow(
+      "NEXT_REDIRECT:/lists/list-1"
+    );
     expect(servicesMock.resetCompletedItems).toHaveBeenCalledTimes(1);
   });
 
   test("createItemAction: valida parentId y redirige a add cuando no existe", async () => {
     servicesMock.getNodeById.mockReturnValue(undefined);
 
-    await expect(createItemAction(createFormData({ title: "Nuevo", parentId: "missing" }))).rejects.toThrow(
-      "NEXT_REDIRECT:/?error=add"
+    await expect(
+      createItemAction(createFormData({ listId: "list-1", title: "Nuevo", parentId: "missing" }))
+    ).rejects.toThrow(
+      "NEXT_REDIRECT:/lists/list-1?error=add"
     );
   });
 
@@ -148,25 +172,29 @@ describe("actions", () => {
     servicesMock.getNodeById.mockReturnValue({ id: "ok" });
     servicesMock.createItem.mockReturnValue(null);
 
-    await expect(createItemAction(createFormData({ title: "Nuevo", parentId: "ok" }))).rejects.toThrow(
-      "NEXT_REDIRECT:/?error=add"
+    await expect(
+      createItemAction(createFormData({ listId: "list-1", title: "Nuevo", parentId: "ok" }))
+    ).rejects.toThrow(
+      "NEXT_REDIRECT:/lists/list-1?error=add"
     );
   });
 
   test("createItemAction: create + revalidate + redirect en happy path", async () => {
     servicesMock.createItem.mockReturnValue([{ id: "n1" }]);
 
-    await expect(createItemAction(createFormData({ title: "Nuevo" }))).rejects.toThrow("NEXT_REDIRECT:/");
-    expect(servicesMock.createItem).toHaveBeenCalledWith("Nuevo", undefined);
+    await expect(createItemAction(createFormData({ listId: "list-1", title: "Nuevo" }))).rejects.toThrow(
+      "NEXT_REDIRECT:/lists/list-1"
+    );
+    expect(servicesMock.createItem).toHaveBeenCalledWith("list-1", "Nuevo", undefined);
     expect(revalidateTagMock).toHaveBeenCalledWith("lists", "max");
-    expect(redirectMock).toHaveBeenCalledWith("/");
+    expect(redirectMock).toHaveBeenCalledWith("/lists/list-1");
   });
 
   test("deleteItemAction: redirige a error cuando no existe el nodo", async () => {
     servicesMock.getNodeById.mockReturnValue(undefined);
 
-    await expect(deleteItemAction(createFormData({ id: "missing" }))).rejects.toThrow(
-      "NEXT_REDIRECT:/?error=delete"
+    await expect(deleteItemAction(createFormData({ listId: "list-1", id: "missing" }))).rejects.toThrow(
+      "NEXT_REDIRECT:/lists/list-1?error=delete"
     );
   });
 
@@ -174,8 +202,8 @@ describe("actions", () => {
     servicesMock.getNodeById.mockReturnValue({ id: "ok", children: [] });
     servicesMock.deleteItem.mockReturnValue(null);
 
-    await expect(deleteItemAction(createFormData({ id: "ok" }))).rejects.toThrow(
-      "NEXT_REDIRECT:/?error=delete"
+    await expect(deleteItemAction(createFormData({ listId: "list-1", id: "ok" }))).rejects.toThrow(
+      "NEXT_REDIRECT:/lists/list-1?error=delete"
     );
   });
 
@@ -183,38 +211,50 @@ describe("actions", () => {
     servicesMock.getNodeById.mockReturnValue({ id: "ok", children: [] });
     servicesMock.deleteItem.mockReturnValue([{ id: "remaining" }]);
 
-    await expect(deleteItemAction(createFormData({ id: "ok" }))).rejects.toThrow("NEXT_REDIRECT:/");
-    expect(servicesMock.deleteItem).toHaveBeenCalledWith("ok");
+    await expect(deleteItemAction(createFormData({ listId: "list-1", id: "ok" }))).rejects.toThrow(
+      "NEXT_REDIRECT:/lists/list-1"
+    );
+    expect(servicesMock.deleteItem).toHaveBeenCalledWith("list-1", "ok");
     expect(revalidateTagMock).toHaveBeenCalledWith("lists", "max");
-    expect(redirectMock).toHaveBeenCalledWith("/");
+    expect(redirectMock).toHaveBeenCalledWith("/lists/list-1");
   });
 
   test("editItemTitleAction: redirige a error cuando no existe el nodo", async () => {
     servicesMock.getNodeById.mockReturnValue(undefined);
 
-    await expect(editItemTitleAction(createFormData({ id: "missing", title: "Nuevo título" }))).rejects.toThrow(
-      "NEXT_REDIRECT:/?error=edit"
-    );
+    await expect(
+      editItemTitleAction(createFormData({ listId: "list-1", id: "missing", title: "Nuevo título" }))
+    ).rejects.toThrow("NEXT_REDIRECT:/lists/list-1?error=edit");
   });
 
   test("editItemTitleAction: redirige a error cuando update falla", async () => {
     servicesMock.getNodeById.mockReturnValue({ id: "ok", title: "Old", children: [] });
     servicesMock.updateItemTitle.mockReturnValue(null);
 
-    await expect(editItemTitleAction(createFormData({ id: "ok", title: "Nuevo título" }))).rejects.toThrow(
-      "NEXT_REDIRECT:/?error=edit"
-    );
+    await expect(
+      editItemTitleAction(createFormData({ listId: "list-1", id: "ok", title: "Nuevo título" }))
+    ).rejects.toThrow("NEXT_REDIRECT:/lists/list-1?error=edit");
   });
 
   test("editItemTitleAction: actualiza + revalida + redirige en happy path", async () => {
     servicesMock.getNodeById.mockReturnValue({ id: "ok", title: "Old", children: [] });
     servicesMock.updateItemTitle.mockReturnValue([{ id: "ok", title: "Nuevo título" }]);
 
-    await expect(editItemTitleAction(createFormData({ id: "ok", title: "Nuevo título" }))).rejects.toThrow(
-      "NEXT_REDIRECT:/"
-    );
-    expect(servicesMock.updateItemTitle).toHaveBeenCalledWith("ok", "Nuevo título");
+    await expect(
+      editItemTitleAction(createFormData({ listId: "list-1", id: "ok", title: "Nuevo título" }))
+    ).rejects.toThrow("NEXT_REDIRECT:/lists/list-1");
+    expect(servicesMock.updateItemTitle).toHaveBeenCalledWith("list-1", "ok", "Nuevo título");
     expect(revalidateTagMock).toHaveBeenCalledWith("lists", "max");
-    expect(redirectMock).toHaveBeenCalledWith("/");
+    expect(redirectMock).toHaveBeenCalledWith("/lists/list-1");
+  });
+
+  test("createListAction: crea lista y redirige a la nueva ruta", async () => {
+    servicesMock.createList.mockReturnValue({ id: "list-new", title: "Sin nombre", items: [] });
+
+    await expect(createListAction()).rejects.toThrow("NEXT_REDIRECT:/lists/list-new");
+
+    expect(servicesMock.createList).toHaveBeenCalledWith("Sin nombre");
+    expect(revalidateTagMock).toHaveBeenCalledWith("lists", "max");
+    expect(redirectMock).toHaveBeenCalledWith("/lists/list-new");
   });
 });

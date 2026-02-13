@@ -1,20 +1,34 @@
 import { NextResponse } from "next/server";
-import { getLists } from "@/app/features/lists/services";
+import { getDefaultListId, getListById, getListSummaries } from "@/app/features/lists/services";
 import type { ApiError, ListsResponse } from "@/app/features/lists/types";
 
-function validateQueryParams(searchParams: URLSearchParams): { ok: true } | { ok: false; error: ApiError } {
+function validateQueryParams(
+  searchParams: URLSearchParams
+): { ok: true } | { ok: false; error: ApiError } {
   const keys = Array.from(new Set(searchParams.keys()));
-  if (keys.length === 0) {
-    return { ok: true };
+  const unsupportedKeys = keys.filter((key) => key !== "listId");
+  if (unsupportedKeys.length > 0) {
+    return {
+      ok: false,
+      error: {
+        error: "Parámetros de consulta no soportados.",
+        details: `Eliminá ${unsupportedKeys.join(", ")} e intentá de nuevo.`,
+      },
+    };
   }
 
-  return {
-    ok: false,
-    error: {
-      error: "Parámetros de consulta no soportados.",
-      details: `Eliminá ${keys.join(", ")} e intentá de nuevo.`,
-    },
-  };
+  const listId = searchParams.get("listId");
+  if (listId !== null && listId.trim().length === 0) {
+    return {
+      ok: false,
+      error: {
+        error: "Parámetro inválido.",
+        details: 'El parámetro "listId" no puede estar vacío.',
+      },
+    };
+  }
+
+  return { ok: true };
 }
 
 export async function GET(request: Request) {
@@ -25,8 +39,32 @@ export async function GET(request: Request) {
     return NextResponse.json<ApiError>(validation.error, { status: 400 });
   }
 
-  const items = getLists();
-  const response: ListsResponse = { items };
+  const requestedListId = searchParams.get("listId") ?? getDefaultListId();
+  if (!requestedListId) {
+    return NextResponse.json<ApiError>(
+      {
+        error: "No hay listas disponibles.",
+        details: "Creá una lista nueva para comenzar.",
+      },
+      { status: 404 }
+    );
+  }
+
+  const activeList = getListById(requestedListId);
+  if (!activeList) {
+    return NextResponse.json<ApiError>(
+      {
+        error: "No encontramos la lista solicitada.",
+        details: "Seleccioná otra lista desde la barra lateral.",
+      },
+      { status: 404 }
+    );
+  }
+
+  const response: ListsResponse = {
+    lists: getListSummaries(),
+    activeList,
+  };
 
   return NextResponse.json<ListsResponse>(response, { status: 200 });
 }

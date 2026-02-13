@@ -1,4 +1,4 @@
-import type { ItemNode } from "./types";
+import type { ItemNode, List } from "./types";
 
 export const INITIAL_ITEMS: ItemNode[] = [
   {
@@ -56,5 +56,13 @@ export const INITIAL_ITEMS: ItemNode[] = [
         ],
       },
     ],
+  },
+];
+
+export const INITIAL_LISTS: List[] = [
+  {
+    id: "list-travel",
+    title: "Lista de viaje",
+    items: INITIAL_ITEMS,
   },
 ];

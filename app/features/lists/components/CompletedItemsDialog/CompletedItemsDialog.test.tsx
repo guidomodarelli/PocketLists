@@ -5,9 +5,9 @@ import CompletedItemsDialog from "./CompletedItemsDialog";
 
 jest.mock("../TreeList/TreeList", () => ({
   __esModule: true,
-  default: ({ nodes, mode }: { nodes: VisibleNode[]; mode: string }) => (
+  default: ({ nodes, mode, listId }: { nodes: VisibleNode[]; mode: string; listId: string }) => (
     <div data-testid="completed-tree-list">
-      mode:{mode} count:{nodes.length}
+      mode:{mode} count:{nodes.length} list:{listId}
     </div>
   ),
 }));
@@ -40,6 +40,7 @@ describe("CompletedItemsDialog", () => {
         nodes={[createNode()]}
         completedCount={1}
         canResetCompleted
+        listId="list-1"
       />,
     );
 
@@ -50,6 +51,7 @@ describe("CompletedItemsDialog", () => {
     expect(screen.getByText("Tenés 1 ítems completados.")).toBeInTheDocument();
     expect(screen.getByTestId("completed-tree-list")).toHaveTextContent("mode:completed");
     expect(screen.getByTestId("completed-tree-list")).toHaveTextContent("count:1");
+    expect(screen.getByTestId("completed-tree-list")).toHaveTextContent("list:list-1");
   });
 
   test("muestra link para desmarcar completados cuando corresponde", () => {
@@ -58,13 +60,14 @@ describe("CompletedItemsDialog", () => {
         nodes={[createNode()]}
         completedCount={1}
         canResetCompleted
+        listId="list-1"
       />,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Ver completados" }));
     expect(screen.getByRole("link", { name: "Desmarcar completados" })).toHaveAttribute(
       "href",
-      "/?confirmReset=true",
+      "/lists/list-1?confirmReset=true",
     );
   });
 
@@ -74,6 +77,7 @@ describe("CompletedItemsDialog", () => {
         nodes={[createNode()]}
         completedCount={0}
         canResetCompleted={false}
+        listId="list-1"
       />,
     );
 

@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { headers } from "next/headers";
-import Home from "../page";
+import ListPage from "../lists/[listId]/page";
 
 jest.mock("next/headers", () => ({
   headers: jest.fn(),
@@ -15,8 +15,10 @@ jest.mock("@/app/features/lists/actions", () => ({
 
 jest.mock("@/app/features/lists/components/TreeList/TreeList", () => ({
   __esModule: true,
-  default: ({ mode, nodes }: { mode: string; nodes: Array<{ id: string }> }) => (
-    <div data-testid={`tree-list-${mode}`}>nodes:{nodes.length}</div>
+  default: ({ mode, nodes, listId }: { mode: string; nodes: Array<{ id: string }>; listId: string }) => (
+    <div data-testid={`tree-list-${mode}`}>
+      nodes:{nodes.length} list:{listId}
+    </div>
   ),
 }));
 
@@ -31,13 +33,17 @@ jest.mock("@/app/features/lists/components/Link/Link", () => ({
 
 jest.mock("@/app/features/lists/components/AddRootItemButton/AddRootItemButton", () => ({
   __esModule: true,
-  default: () => <div data-testid="add-root-item-button">AddRootItemButton</div>,
+  default: ({ listId }: { listId: string }) => (
+    <div data-testid="add-root-item-button">AddRootItemButton:{listId}</div>
+  ),
 }));
 
 jest.mock("@/app/features/lists/components/CompletedItemsDialog/CompletedItemsDialog", () => ({
   __esModule: true,
-  default: ({ completedCount }: { completedCount: number }) => (
-    <div data-testid="completed-items-dialog">completed:{completedCount}</div>
+  default: ({ completedCount, listId }: { completedCount: number; listId: string }) => (
+    <div data-testid="completed-items-dialog">
+      completed:{completedCount} list:{listId}
+    </div>
   ),
 }));
 
@@ -67,6 +73,14 @@ jest.mock("@/components/ui/dialog", () => ({
   DialogTitle: ({ children }: { children: ReactNode }) => <h2>{children}</h2>,
 }));
 
+jest.mock("@/components/ui/sidebar", () => ({
+  SidebarTrigger: ({ ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button type="button" {...props}>
+      toggle
+    </button>
+  ),
+}));
+
 const headersMock = headers as jest.MockedFunction<typeof headers>;
 
 function mockHeaders(host = "localhost:3000", protocol = "http") {
@@ -90,7 +104,7 @@ function mockFetchResponse(payload: unknown, ok = true) {
   } as Response);
 }
 
-describe("Home page SSR", () => {
+describe("List page SSR", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockHeaders();
@@ -99,47 +113,62 @@ describe("Home page SSR", () => {
   test("renderiza estado de error cuando falla la API", async () => {
     mockFetchResponse({ error: "Error API", details: "Detalle API" }, false);
 
-    const view = await Home({ searchParams: {} });
+    const view = await ListPage({ params: { listId: "list-1" }, searchParams: {} });
     render(view);
 
     expect(screen.getByText("Error API")).toBeInTheDocument();
     expect(screen.getByText("Detalle API")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Reintentar" })).toHaveAttribute("href", "/");
+    expect(screen.getByRole("link", { name: "Reintentar" })).toHaveAttribute("href", "/lists/list-1");
   });
 
   test("renderiza estado vacío cuando no hay ítems", async () => {
-    mockFetchResponse({ items: [] });
+    mockFetchResponse({
+      lists: [{ id: "list-1", title: "Lista 1" }],
+      activeList: { id: "list-1", title: "Lista 1", items: [] },
+    });
 
-    const view = await Home({ searchParams: {} });
+    const view = await ListPage({ params: { listId: "list-1" }, searchParams: {} });
     render(view);
 
     expect(screen.getByTestId("tree-list-pending")).toHaveTextContent("nodes:0");
+    expect(screen.getByTestId("tree-list-pending")).toHaveTextContent("list:list-1");
     expect(screen.getByTestId("add-root-item-button")).toBeInTheDocument();
   });
 
   test("renderiza vista principal con pendientes y acceso a completados", async () => {
     mockFetchResponse({
-      items: [
+      lists: [{ id: "list-1", title: "Lista 1" }],
+      activeList: {
+        id: "list-1",
+        title: "Lista 1",
+        items: [
         { id: "pending-1", title: "Pendiente", completed: false, children: [] },
         { id: "completed-1", title: "Completado", completed: true, children: [] },
-      ],
+        ],
+      },
     });
 
-    const view = await Home({ searchParams: {} });
+    const view = await ListPage({ params: { listId: "list-1" }, searchParams: {} });
     render(view);
 
     expect(screen.getByText("Pendientes: 1")).toBeInTheDocument();
     expect(screen.getByText("Completados: 1")).toBeInTheDocument();
     expect(screen.getByTestId("tree-list-pending")).toBeInTheDocument();
     expect(screen.getByTestId("completed-items-dialog")).toHaveTextContent("completed:1");
+    expect(screen.getByTestId("completed-items-dialog")).toHaveTextContent("list:list-1");
   });
 
   test("muestra modal de confirmación reset cuando corresponde", async () => {
     mockFetchResponse({
-      items: [{ id: "completed-1", title: "Completado", completed: true, children: [] }],
+      lists: [{ id: "list-1", title: "Lista 1" }],
+      activeList: {
+        id: "list-1",
+        title: "Lista 1",
+        items: [{ id: "completed-1", title: "Completado", completed: true, children: [] }],
+      },
     });
 
-    const view = await Home({ searchParams: { confirmReset: "true" } });
+    const view = await ListPage({ params: { listId: "list-1" }, searchParams: { confirmReset: "true" } });
     render(view);
 
     expect(screen.getByRole("heading", { name: "Desmarcar completados" })).toBeInTheDocument();
@@ -148,10 +177,11 @@ describe("Home page SSR", () => {
 
   test("muestra banner cuando confirm apunta a un ítem inexistente", async () => {
     mockFetchResponse({
-      items: [{ id: "root", title: "Root", completed: false, children: [] }],
+      lists: [{ id: "list-1", title: "Lista 1" }],
+      activeList: { id: "list-1", title: "Lista 1", items: [{ id: "root", title: "Root", completed: false, children: [] }] },
     });
 
-    const view = await Home({ searchParams: { confirm: "missing-id" } });
+    const view = await ListPage({ params: { listId: "list-1" }, searchParams: { confirm: "missing-id" } });
     render(view);
 
     expect(screen.getByText("No encontramos el ítem que querías confirmar. Probá actualizar la página.")).toBeInTheDocument();

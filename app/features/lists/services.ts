@@ -1,32 +1,98 @@
 import { randomUUID } from "node:crypto";
-import { INITIAL_ITEMS } from "./data";
-import type { ItemNode } from "./types";
+import { INITIAL_LISTS } from "./data";
+import type { ItemNode, List, ListSummary } from "./types";
 import { findNode, normalizeTree, setSubtreeCompletion, updateNodeInTree } from "./tree";
 
 type ListsStore = {
-  items: ItemNode[];
+  lists: List[];
 };
 
 type GlobalStore = typeof globalThis & {
-  __pocketListsStore?: ListsStore;
+  __pocketListsStore?: ListsStore | { items?: ItemNode[] };
 };
 
 const globalStore = globalThis as GlobalStore;
 
+function buildInitialLists(): List[] {
+  return INITIAL_LISTS.map((list) => ({
+    ...list,
+    items: normalizeTree(list.items),
+  }));
+}
+
+function normalizeListsStore(store: List[]): List[] {
+  return store.map((list) => ({
+    ...list,
+    items: normalizeTree(list.items),
+  }));
+}
+
+function migrateLegacyStore(legacyItems: ItemNode[]): ListsStore {
+  const baseList = INITIAL_LISTS[0];
+  return {
+    lists: [
+      {
+        id: baseList?.id ?? `list-${randomUUID()}`,
+        title: baseList?.title ?? "Sin nombre",
+        items: normalizeTree(legacyItems),
+      },
+    ],
+  };
+}
+
 function readStore(): ListsStore {
-  if (!globalStore.__pocketListsStore) {
-    globalStore.__pocketListsStore = { items: normalizeTree(INITIAL_ITEMS) };
+  const currentStore = globalStore.__pocketListsStore;
+
+  if (!currentStore) {
+    const nextStore: ListsStore = { lists: buildInitialLists() };
+    globalStore.__pocketListsStore = nextStore;
+    return nextStore;
   }
-  return globalStore.__pocketListsStore;
+
+  if ("lists" in currentStore && Array.isArray(currentStore.lists)) {
+    const nextStore: ListsStore = { lists: normalizeListsStore(currentStore.lists) };
+    globalStore.__pocketListsStore = nextStore;
+    return nextStore;
+  }
+
+  if ("items" in currentStore && Array.isArray(currentStore.items)) {
+    const nextStore = migrateLegacyStore(currentStore.items);
+    globalStore.__pocketListsStore = nextStore;
+    return nextStore;
+  }
+
+  const fallbackStore: ListsStore = { lists: buildInitialLists() };
+  globalStore.__pocketListsStore = fallbackStore;
+  return fallbackStore;
 }
 
-function writeStore(items: ItemNode[]): void {
+function writeStore(lists: List[]): void {
   const store = readStore();
-  store.items = items;
+  store.lists = lists;
 }
 
-function getStoreItems(): ItemNode[] {
-  return readStore().items;
+function getStoreLists(): List[] {
+  return readStore().lists;
+}
+
+function getStoreListById(listId: string): List | undefined {
+  return getStoreLists().find((list) => list.id === listId);
+}
+
+function writeStoreListItems(listId: string, items: ItemNode[]): ItemNode[] | null {
+  const lists = getStoreLists();
+  const listIndex = lists.findIndex((list) => list.id === listId);
+  if (listIndex === -1) {
+    return null;
+  }
+
+  const nextLists = [...lists];
+  nextLists[listIndex] = {
+    ...nextLists[listIndex],
+    items,
+  };
+  writeStore(nextLists);
+  return items;
 }
 
 function removeNodeFromTree(items: ItemNode[], id: string): [ItemNode[], boolean] {
@@ -52,16 +118,48 @@ function removeNodeFromTree(items: ItemNode[], id: string): [ItemNode[], boolean
   return [result, changed];
 }
 
-export function getLists(): ItemNode[] {
-  return getStoreItems();
+export function getLists(): List[] {
+  return getStoreLists();
 }
 
-export function getNodeById(id: string): ItemNode | undefined {
-  return findNode(getStoreItems(), id);
+export function getListById(listId: string): List | undefined {
+  return getStoreListById(listId);
 }
 
-export function toggleItem(id: string, nextCompleted: boolean): ItemNode[] {
-  const updated = updateNodeInTree(getStoreItems(), id, (node) => {
+export function getListSummaries(): ListSummary[] {
+  return getStoreLists().map((list) => ({ id: list.id, title: list.title }));
+}
+
+export function getDefaultListId(): string | undefined {
+  return getStoreLists()[0]?.id;
+}
+
+export function createList(title = "Sin nombre"): List {
+  const newList: List = {
+    id: `list-${randomUUID()}`,
+    title,
+    items: [],
+  };
+
+  writeStore([newList, ...getStoreLists()]);
+  return newList;
+}
+
+export function getNodeById(listId: string, id: string): ItemNode | undefined {
+  const list = getStoreListById(listId);
+  if (!list) {
+    return undefined;
+  }
+  return findNode(list.items, id);
+}
+
+export function toggleItem(listId: string, id: string, nextCompleted: boolean): ItemNode[] | null {
+  const list = getStoreListById(listId);
+  if (!list) {
+    return null;
+  }
+
+  const updated = updateNodeInTree(list.items, id, (node) => {
     if (node.children.length > 0) {
       return setSubtreeCompletion(node, nextCompleted);
     }
@@ -69,32 +167,48 @@ export function toggleItem(id: string, nextCompleted: boolean): ItemNode[] {
   });
 
   const normalized = normalizeTree(updated);
-  writeStore(normalized);
-  return normalized;
+  return writeStoreListItems(listId, normalized);
 }
 
-export function completeParent(id: string): ItemNode[] {
-  const updated = updateNodeInTree(getStoreItems(), id, (node) => setSubtreeCompletion(node, true));
+export function completeParent(listId: string, id: string): ItemNode[] | null {
+  const list = getStoreListById(listId);
+  if (!list) {
+    return null;
+  }
+
+  const updated = updateNodeInTree(list.items, id, (node) => setSubtreeCompletion(node, true));
   const normalized = normalizeTree(updated);
-  writeStore(normalized);
-  return normalized;
+  return writeStoreListItems(listId, normalized);
 }
 
-export function uncheckParent(id: string): ItemNode[] {
-  const updated = updateNodeInTree(getStoreItems(), id, (node) => setSubtreeCompletion(node, false));
+export function uncheckParent(listId: string, id: string): ItemNode[] | null {
+  const list = getStoreListById(listId);
+  if (!list) {
+    return null;
+  }
+
+  const updated = updateNodeInTree(list.items, id, (node) => setSubtreeCompletion(node, false));
   const normalized = normalizeTree(updated);
-  writeStore(normalized);
-  return normalized;
+  return writeStoreListItems(listId, normalized);
 }
 
-export function resetCompletedItems(): ItemNode[] {
-  const updated = getStoreItems().map((item) => setSubtreeCompletion(item, false));
+export function resetCompletedItems(listId: string): ItemNode[] | null {
+  const list = getStoreListById(listId);
+  if (!list) {
+    return null;
+  }
+
+  const updated = list.items.map((item) => setSubtreeCompletion(item, false));
   const normalized = normalizeTree(updated);
-  writeStore(normalized);
-  return normalized;
+  return writeStoreListItems(listId, normalized);
 }
 
-export function createItem(title: string, parentId?: string): ItemNode[] | null {
+export function createItem(listId: string, title: string, parentId?: string): ItemNode[] | null {
+  const list = getStoreListById(listId);
+  if (!list) {
+    return null;
+  }
+
   const newItem: ItemNode = {
     id: `item-${randomUUID()}`,
     title,
@@ -102,12 +216,11 @@ export function createItem(title: string, parentId?: string): ItemNode[] | null 
     children: [],
   };
 
-  const items = getStoreItems();
+  const items = list.items;
 
   if (!parentId) {
     const normalized = normalizeTree([newItem, ...items]);
-    writeStore(normalized);
-    return normalized;
+    return writeStoreListItems(listId, normalized);
   }
 
   const updated = updateNodeInTree(items, parentId, (node) => ({
@@ -120,23 +233,31 @@ export function createItem(title: string, parentId?: string): ItemNode[] | null 
   }
 
   const normalized = normalizeTree(updated);
-  writeStore(normalized);
-  return normalized;
+  return writeStoreListItems(listId, normalized);
 }
 
-export function deleteItem(id: string): ItemNode[] | null {
-  const [updated, changed] = removeNodeFromTree(getStoreItems(), id);
+export function deleteItem(listId: string, id: string): ItemNode[] | null {
+  const list = getStoreListById(listId);
+  if (!list) {
+    return null;
+  }
+
+  const [updated, changed] = removeNodeFromTree(list.items, id);
   if (!changed) {
     return null;
   }
 
   const normalized = normalizeTree(updated);
-  writeStore(normalized);
-  return normalized;
+  return writeStoreListItems(listId, normalized);
 }
 
-export function updateItemTitle(id: string, title: string): ItemNode[] | null {
-  const items = getStoreItems();
+export function updateItemTitle(listId: string, id: string, title: string): ItemNode[] | null {
+  const list = getStoreListById(listId);
+  if (!list) {
+    return null;
+  }
+
+  const items = list.items;
   const updated = updateNodeInTree(items, id, (node) => ({
     ...node,
     title,
@@ -147,6 +268,5 @@ export function updateItemTitle(id: string, title: string): ItemNode[] | null {
   }
 
   const normalized = normalizeTree(updated);
-  writeStore(normalized);
-  return normalized;
+  return writeStoreListItems(listId, normalized);
 }
