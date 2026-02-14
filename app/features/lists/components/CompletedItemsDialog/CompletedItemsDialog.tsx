@@ -39,7 +39,7 @@ export default function CompletedItemsDialog({
     openOnLoad ? "open-on-load" : "manual-open",
   ].join("-");
   const handleOpenChange = (nextOpen: boolean) => {
-    if (nextOpen || !searchParams.has("openCompleted")) {
+    if (nextOpen || !searchParams?.has("openCompleted")) {
       return;
     }
 

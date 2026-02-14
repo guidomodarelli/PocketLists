@@ -51,7 +51,11 @@ function getVisibleListTitle(title: string): string {
   return normalizedListTitle.length === 0 ? "(Sin nombre)" : title;
 }
 
-function getCurrentListId(pathname: string): string | null {
+function getCurrentListId(pathname: string | null): string | null {
+  if (!pathname) {
+    return null;
+  }
+
   const pathSegments = pathname.split("/");
   if (pathSegments[1] !== "lists" || !pathSegments[2]) {
     return null;

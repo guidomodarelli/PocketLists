@@ -1,5 +1,20 @@
 import { NextResponse } from "next/server";
-import { getDefaultListId, getListById, getListSummaries } from "@/app/features/lists/services";
+import {
+  completeParent,
+  createList,
+  createItem,
+  deleteList,
+  deleteItem,
+  getDefaultListId,
+  getListById,
+  getListSummaries,
+  getNodeById,
+  resetCompletedItems,
+  toggleItem,
+  uncheckParent,
+  updateItemTitle,
+  updateListTitle,
+} from "@/app/features/lists/services";
 import type { ApiError, ListsResponse } from "@/app/features/lists/types";
 
 function validateQueryParams(
@@ -29,6 +44,59 @@ function validateQueryParams(
   }
 
   return { ok: true };
+}
+
+type ListsMutationAction =
+  | "toggleItem"
+  | "confirmParent"
+  | "confirmUncheckParent"
+  | "resetCompleted"
+  | "createItem"
+  | "deleteItem"
+  | "editItemTitle"
+  | "createList"
+  | "editListTitle"
+  | "deleteList";
+
+type ListsMutationRequest = {
+  action?: ListsMutationAction;
+  payload?: Record<string, unknown>;
+};
+
+type ListsMutationResponse = {
+  redirectTo: string;
+};
+
+function buildListPath(listId: string): string {
+  return `/lists/${encodeURIComponent(listId)}`;
+}
+
+function readString(payload: Record<string, unknown> | undefined, key: string): string | undefined {
+  const value = payload?.[key];
+  return typeof value === "string" ? value : undefined;
+}
+
+function readRequiredString(payload: Record<string, unknown> | undefined, key: string): string | null {
+  const value = readString(payload, key);
+  if (!value || value.trim().length === 0) {
+    return null;
+  }
+  return value;
+}
+
+function readBoolean(payload: Record<string, unknown> | undefined, key: string): boolean | null {
+  const value = readString(payload, key);
+  if (value === "true") {
+    return true;
+  }
+  if (value === "false") {
+    return false;
+  }
+  return null;
+}
+
+function respondRedirect(redirectTo: string): NextResponse<ListsMutationResponse> {
+  return NextResponse.json<ListsMutationResponse>({ redirectTo }, { status: 200 });
 }
 
 export async function GET(request: Request) {
@@ -67,4 +135,173 @@ export async function GET(request: Request) {
   };
 
   return NextResponse.json<ListsResponse>(response, { status: 200 });
+}
+
+export async function POST(request: Request) {
+  const requestData = (await request.json().catch(() => null)) as ListsMutationRequest | null;
+
+  if (!requestData || typeof requestData !== "object") {
+    return NextResponse.json<ApiError>(
+      {
+        error: "Payload inválido.",
+        details: "Enviá un objeto JSON con la acción solicitada.",
+      },
+      { status: 400 }
+    );
+  }
+
+  const { action, payload } = requestData;
+
+  if (!action) {
+    return NextResponse.json<ApiError>(
+      {
+        error: "Acción inválida.",
+        details: "Indicá una acción soportada para continuar.",
+      },
+      { status: 400 }
+    );
+  }
+
+  if (action === "createList") {
+    const newList = createList("Sin nombre");
+    return respondRedirect(buildListPath(newList.id));
+  }
+
+  const listId = readRequiredString(payload, "listId");
+  if (!listId) {
+    return NextResponse.json<ApiError>(
+      {
+        error: "Payload inválido.",
+        details: 'El campo "listId" es requerido.',
+      },
+      { status: 400 }
+    );
+  }
+
+  const listPath = buildListPath(listId);
+
+  if (action === "toggleItem") {
+    const id = readRequiredString(payload, "id");
+    const nextCompleted = readBoolean(payload, "nextCompleted");
+
+    if (!id || nextCompleted === null) {
+      return respondRedirect(`${listPath}?error=action`);
+    }
+
+    const currentNode = getNodeById(listId, id);
+    if (!currentNode) {
+      return respondRedirect(`${listPath}?error=action`);
+    }
+
+    if (nextCompleted && currentNode.children.length > 0 && !currentNode.completed) {
+      return respondRedirect(`${listPath}?confirm=${encodeURIComponent(id)}`);
+    }
+
+    const result = toggleItem(listId, id, nextCompleted);
+    return respondRedirect(result ? listPath : `${listPath}?error=action`);
+  }
+
+  if (action === "confirmParent") {
+    const id = readRequiredString(payload, "id");
+    if (!id || !getNodeById(listId, id)) {
+      return respondRedirect(`${listPath}?error=action`);
+    }
+
+    const result = completeParent(listId, id);
+    return respondRedirect(result ? listPath : `${listPath}?error=action`);
+  }
+
+  if (action === "confirmUncheckParent") {
+    const id = readRequiredString(payload, "id");
+    const reopenCompletedDialog = readBoolean(payload, "reopenCompletedDialog") === true;
+
+    if (!id || !getNodeById(listId, id)) {
+      return respondRedirect(`${listPath}?error=action`);
+    }
+
+    const result = uncheckParent(listId, id);
+    if (!result) {
+      return respondRedirect(`${listPath}?error=action`);
+    }
+
+    return respondRedirect(reopenCompletedDialog ? `${listPath}?openCompleted=true` : listPath);
+  }
+
+  if (action === "resetCompleted") {
+    const result = resetCompletedItems(listId);
+    return respondRedirect(result ? listPath : `${listPath}?error=action`);
+  }
+
+  if (action === "createItem") {
+    const title = readRequiredString(payload, "title");
+    const parentId = readString(payload, "parentId");
+
+    if (!title) {
+      return respondRedirect(`${listPath}?error=add`);
+    }
+
+    if (parentId && !getNodeById(listId, parentId)) {
+      return respondRedirect(`${listPath}?error=add`);
+    }
+
+    const result = createItem(listId, title, parentId);
+    return respondRedirect(result ? listPath : `${listPath}?error=add`);
+  }
+
+  if (action === "deleteItem") {
+    const id = readRequiredString(payload, "id");
+    if (!id || !getNodeById(listId, id)) {
+      return respondRedirect(`${listPath}?error=delete`);
+    }
+
+    const result = deleteItem(listId, id);
+    return respondRedirect(result ? listPath : `${listPath}?error=delete`);
+  }
+
+  if (action === "editItemTitle") {
+    const id = readRequiredString(payload, "id");
+    const title = readRequiredString(payload, "title");
+
+    if (!id || !title || !getNodeById(listId, id)) {
+      return respondRedirect(`${listPath}?error=edit`);
+    }
+
+    const result = updateItemTitle(listId, id, title);
+    return respondRedirect(result ? listPath : `${listPath}?error=edit`);
+  }
+
+  if (action === "editListTitle") {
+    const title = readString(payload, "title");
+    if (title === undefined) {
+      return respondRedirect(`${listPath}?error=listEdit`);
+    }
+
+    const result = updateListTitle(listId, title);
+    return respondRedirect(result ? listPath : `${listPath}?error=listEdit`);
+  }
+
+  if (action === "deleteList") {
+    const currentListId = readString(payload, "currentListId") ?? listId;
+    const currentListPath = buildListPath(currentListId);
+
+    const deleted = deleteList(listId);
+    if (!deleted) {
+      return respondRedirect(`${currentListPath}?error=listDelete`);
+    }
+
+    let redirectListId = currentListId;
+    if (listId === currentListId || !getListById(currentListId)) {
+      redirectListId = getDefaultListId() ?? createList("Sin nombre").id;
+    }
+
+    return respondRedirect(buildListPath(redirectListId));
+  }
+
+  return NextResponse.json<ApiError>(
+    {
+      error: "Acción no soportada.",
+      details: "Usá una acción válida para operar sobre listas.",
+    },
+    { status: 400 }
+  );
 }
