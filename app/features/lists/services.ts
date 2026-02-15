@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { INITIAL_LISTS } from "./data";
 import type { ItemNode, List, ListSummary } from "./types";
 import { findNode, normalizeTree, setSubtreeCompletion, updateNodeInTree } from "./tree";
@@ -12,6 +12,61 @@ type GlobalStore = typeof globalThis & {
 };
 
 const globalStore = globalThis as GlobalStore;
+
+type NodeRuntimeModules = {
+  fs: typeof import("node:fs");
+  os: typeof import("node:os");
+  path: typeof import("node:path");
+};
+
+function loadNodeRuntimeModules(): NodeRuntimeModules | null {
+  if (typeof window !== "undefined") {
+    return null;
+  }
+
+  const processWithBuiltins = process as typeof process & {
+    getBuiltinModule?: (id: string) => unknown;
+  };
+
+  if (typeof processWithBuiltins.getBuiltinModule === "function") {
+    const fs = processWithBuiltins.getBuiltinModule("node:fs") ?? processWithBuiltins.getBuiltinModule("fs");
+    const os = processWithBuiltins.getBuiltinModule("node:os") ?? processWithBuiltins.getBuiltinModule("os");
+    const path = processWithBuiltins.getBuiltinModule("node:path") ?? processWithBuiltins.getBuiltinModule("path");
+
+    if (fs && os && path) {
+      return {
+        fs: fs as NodeRuntimeModules["fs"],
+        os: os as NodeRuntimeModules["os"],
+        path: path as NodeRuntimeModules["path"],
+      };
+    }
+  }
+
+  const runtimeRequire = (globalThis as { require?: (id: string) => unknown }).require;
+  if (typeof runtimeRequire === "function") {
+    try {
+      return {
+        fs: runtimeRequire("node:fs") as NodeRuntimeModules["fs"],
+        os: runtimeRequire("node:os") as NodeRuntimeModules["os"],
+        path: runtimeRequire("node:path") as NodeRuntimeModules["path"],
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
+
+function getStoreFilePath(runtime: NodeRuntimeModules): string {
+  const envPath = process.env.POCKET_LISTS_STORE_PATH?.trim();
+  if (envPath) {
+    return envPath;
+  }
+
+  const workspaceHash = createHash("sha1").update(process.cwd()).digest("hex").slice(0, 12);
+  return runtime.path.join(runtime.os.tmpdir(), `pocket-lists-store-${workspaceHash}.json`);
+}
 
 function buildInitialLists(): List[] {
   return INITIAL_LISTS.map((list) => ({
@@ -40,35 +95,91 @@ function migrateLegacyStore(legacyItems: ItemNode[]): ListsStore {
   };
 }
 
+function readStoreFromDisk(): ListsStore | null {
+  const runtime = loadNodeRuntimeModules();
+  if (!runtime) {
+    return null;
+  }
+
+  try {
+    const storeFilePath = getStoreFilePath(runtime);
+    if (!runtime.fs.existsSync(storeFilePath)) {
+      return null;
+    }
+
+    const raw = runtime.fs.readFileSync(storeFilePath, "utf-8");
+    const parsed = JSON.parse(raw) as unknown;
+    if (
+      !parsed ||
+      typeof parsed !== "object" ||
+      !("lists" in parsed) ||
+      !Array.isArray((parsed as { lists?: unknown }).lists)
+    ) {
+      return null;
+    }
+
+    const lists = (parsed as { lists: List[] }).lists;
+    return { lists: normalizeListsStore(lists) };
+  } catch {
+    return null;
+  }
+}
+
+function writeStoreToDisk(store: ListsStore): void {
+  const runtime = loadNodeRuntimeModules();
+  if (!runtime) {
+    return;
+  }
+
+  try {
+    const storeFilePath = getStoreFilePath(runtime);
+    runtime.fs.mkdirSync(runtime.path.dirname(storeFilePath), { recursive: true });
+    runtime.fs.writeFileSync(storeFilePath, JSON.stringify(store), "utf-8");
+  } catch {
+    // If persistence is unavailable, continue with in-memory store.
+  }
+}
+
 function readStore(): ListsStore {
+  const diskStore = readStoreFromDisk();
+  if (diskStore) {
+    globalStore.__pocketListsStore = diskStore;
+    return diskStore;
+  }
+
   const currentStore = globalStore.__pocketListsStore;
 
   if (!currentStore) {
     const nextStore: ListsStore = { lists: buildInitialLists() };
     globalStore.__pocketListsStore = nextStore;
+    writeStoreToDisk(nextStore);
     return nextStore;
   }
 
   if ("lists" in currentStore && Array.isArray(currentStore.lists)) {
     const nextStore: ListsStore = { lists: normalizeListsStore(currentStore.lists) };
     globalStore.__pocketListsStore = nextStore;
+    writeStoreToDisk(nextStore);
     return nextStore;
   }
 
   if ("items" in currentStore && Array.isArray(currentStore.items)) {
     const nextStore = migrateLegacyStore(currentStore.items);
     globalStore.__pocketListsStore = nextStore;
+    writeStoreToDisk(nextStore);
     return nextStore;
   }
 
   const fallbackStore: ListsStore = { lists: buildInitialLists() };
   globalStore.__pocketListsStore = fallbackStore;
+  writeStoreToDisk(fallbackStore);
   return fallbackStore;
 }
 
 function writeStore(lists: List[]): void {
-  const store = readStore();
-  store.lists = lists;
+  const nextStore: ListsStore = { lists };
+  globalStore.__pocketListsStore = nextStore;
+  writeStoreToDisk(nextStore);
 }
 
 function getStoreLists(): List[] {

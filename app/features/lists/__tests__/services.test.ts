@@ -1,3 +1,7 @@
+/** @jest-environment node */
+
+import { existsSync, unlinkSync } from "node:fs";
+import { join } from "node:path";
 import {
   completeParent,
   createList,
@@ -15,13 +19,20 @@ import {
   updateListTitle,
   updateItemTitle,
 } from "../services";
+import { tmpdir } from "node:os";
 
 type GlobalStore = typeof globalThis & {
   __pocketListsStore?: unknown;
 };
 
+const TEST_STORE_PATH = join(tmpdir(), `pocket-lists-store-${process.pid}.json`);
+process.env.POCKET_LISTS_STORE_PATH = TEST_STORE_PATH;
+
 function resetStore() {
   delete (globalThis as GlobalStore).__pocketListsStore;
+  if (existsSync(TEST_STORE_PATH)) {
+    unlinkSync(TEST_STORE_PATH);
+  }
 }
 
 const DEFAULT_LIST_ID = "list-travel";
@@ -58,6 +69,18 @@ describe("services", () => {
     expect(created.title).toBe("Sin nombre");
     expect(created.id.startsWith("list-")).toBe(true);
     expect(summaries[0]?.id).toBe(created.id);
+  });
+
+  test("preserva cambios al reiniciar store en memoria", () => {
+    const created = createItem(DEFAULT_LIST_ID, "Persisted item");
+    expect(created).not.toBeNull();
+
+    delete (globalThis as GlobalStore).__pocketListsStore;
+
+    const persistedNode = getLists()
+      .flatMap((list) => list.items)
+      .find((item) => item.title === "Persisted item");
+    expect(persistedNode).toBeDefined();
   });
 
   test("deleteList elimina una lista existente", () => {

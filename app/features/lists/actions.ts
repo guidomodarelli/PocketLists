@@ -2,21 +2,27 @@
 
 import { revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
-import {
-  completeParent,
-  createList,
-  createItem,
-  deleteList,
-  deleteItem,
-  getDefaultListId,
-  getListById,
-  getNodeById,
-  resetCompletedItems,
-  toggleItem,
-  uncheckParent,
-  updateListTitle,
-  updateItemTitle,
-} from "./services";
+
+type ListsServices = typeof import("./services");
+type ListsMutationAction =
+  | "toggleItem"
+  | "confirmParent"
+  | "confirmUncheckParent"
+  | "resetCompleted"
+  | "createItem"
+  | "deleteItem"
+  | "editItemTitle"
+  | "createList"
+  | "editListTitle"
+  | "deleteList";
+
+async function getListsServices(): Promise<ListsServices> {
+  return import("./services");
+}
+
+function isBrowserRuntime(): boolean {
+  return typeof window !== "undefined" && process.env.NODE_ENV !== "test";
+}
 
 function readRequiredString(formData: FormData, key: string): string {
   const value = formData.get(key);
@@ -69,170 +75,272 @@ function buildListPath(listId: string): string {
   return `/lists/${encodeURIComponent(listId)}`;
 }
 
+function navigateTo(target: string): void {
+  if (isBrowserRuntime()) {
+    window.location.assign(target);
+    return;
+  }
+
+  redirect(target);
+}
+
+function revalidateListsTagSafely(): void {
+  try {
+    revalidateTag("lists", "max");
+  } catch (error) {
+    if (error instanceof Error && error.message.toLowerCase().includes("static generation store missing")) {
+      return;
+    }
+    throw error;
+  }
+}
+
+function formDataToPayload(formData: FormData): Record<string, string> {
+  const payload: Record<string, string> = {};
+  for (const [key, value] of formData.entries()) {
+    if (typeof value === "string") {
+      payload[key] = value;
+    }
+  }
+  return payload;
+}
+
+async function executeClientMutation(action: ListsMutationAction, formData?: FormData): Promise<void> {
+  const payload = formData ? formDataToPayload(formData) : {};
+  const fallbackTarget = payload.listId ? buildListPath(payload.listId) : "/";
+
+  try {
+    const response = await fetch("/api/lists", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action, payload }),
+    });
+    const body = (await response.json().catch(() => null)) as { redirectTo?: string } | null;
+    if (body?.redirectTo) {
+      navigateTo(body.redirectTo);
+      return;
+    }
+  } catch {
+    // fall through to fallback redirect
+  }
+
+  navigateTo(fallbackTarget);
+}
+
 export async function toggleItemAction(formData: FormData): Promise<void> {
+  if (isBrowserRuntime()) {
+    return executeClientMutation("toggleItem", formData);
+  }
+
+  const services = await getListsServices();
   const listId = readRequiredString(formData, "listId");
   const id = readRequiredString(formData, "id");
   const nextCompleted = readRequiredBoolean(formData, "nextCompleted");
-  const currentNode = getNodeById(listId, id);
+  const currentNode = services.getNodeById(listId, id);
   const listPath = buildListPath(listId);
 
   if (!currentNode) {
-    redirect(`${listPath}?error=action`);
+    return navigateTo(`${listPath}?error=action`);
   }
 
   if (nextCompleted && currentNode.children.length > 0 && !currentNode.completed) {
-    redirect(`${listPath}?confirm=${encodeURIComponent(id)}`);
+    return navigateTo(`${listPath}?confirm=${encodeURIComponent(id)}`);
   }
 
-  const result = toggleItem(listId, id, nextCompleted);
+  const result = services.toggleItem(listId, id, nextCompleted);
   if (!result) {
-    redirect(`${listPath}?error=action`);
+    return navigateTo(`${listPath}?error=action`);
   }
-  revalidateTag("lists", "max");
-  redirect(listPath);
+  revalidateListsTagSafely();
+  return navigateTo(listPath);
 }
 
 export async function confirmParentAction(formData: FormData): Promise<void> {
+  if (isBrowserRuntime()) {
+    return executeClientMutation("confirmParent", formData);
+  }
+
+  const services = await getListsServices();
   const listId = readRequiredString(formData, "listId");
   const id = readRequiredString(formData, "id");
-  const currentNode = getNodeById(listId, id);
+  const currentNode = services.getNodeById(listId, id);
   const listPath = buildListPath(listId);
 
   if (!currentNode) {
-    redirect(`${listPath}?error=action`);
+    return navigateTo(`${listPath}?error=action`);
   }
 
-  const result = completeParent(listId, id);
+  const result = services.completeParent(listId, id);
   if (!result) {
-    redirect(`${listPath}?error=action`);
+    return navigateTo(`${listPath}?error=action`);
   }
-  revalidateTag("lists", "max");
-  redirect(listPath);
+  revalidateListsTagSafely();
+  return navigateTo(listPath);
 }
 
 export async function confirmUncheckParentAction(formData: FormData): Promise<void> {
+  if (isBrowserRuntime()) {
+    return executeClientMutation("confirmUncheckParent", formData);
+  }
+
+  const services = await getListsServices();
   const listId = readRequiredString(formData, "listId");
   const id = readRequiredString(formData, "id");
   const reopenCompletedDialog = readOptionalBoolean(formData, "reopenCompletedDialog") === true;
-  const currentNode = getNodeById(listId, id);
+  const currentNode = services.getNodeById(listId, id);
   const listPath = buildListPath(listId);
 
   if (!currentNode) {
-    redirect(`${listPath}?error=action`);
+    return navigateTo(`${listPath}?error=action`);
   }
 
-  const result = uncheckParent(listId, id);
+  const result = services.uncheckParent(listId, id);
   if (!result) {
-    redirect(`${listPath}?error=action`);
+    return navigateTo(`${listPath}?error=action`);
   }
-  revalidateTag("lists", "max");
-  redirect(reopenCompletedDialog ? `${listPath}?openCompleted=true` : listPath);
+  revalidateListsTagSafely();
+  return navigateTo(reopenCompletedDialog ? `${listPath}?openCompleted=true` : listPath);
 }
 
 export async function resetCompletedAction(formData: FormData): Promise<void> {
+  if (isBrowserRuntime()) {
+    return executeClientMutation("resetCompleted", formData);
+  }
+
+  const services = await getListsServices();
   const listId = readRequiredString(formData, "listId");
   const listPath = buildListPath(listId);
-  const result = resetCompletedItems(listId);
+  const result = services.resetCompletedItems(listId);
   if (!result) {
-    redirect(`${listPath}?error=action`);
+    return navigateTo(`${listPath}?error=action`);
   }
-  revalidateTag("lists", "max");
-  redirect(listPath);
+  revalidateListsTagSafely();
+  return navigateTo(listPath);
 }
 
 export async function createItemAction(formData: FormData): Promise<void> {
+  if (isBrowserRuntime()) {
+    return executeClientMutation("createItem", formData);
+  }
+
+  const services = await getListsServices();
   const listId = readRequiredString(formData, "listId");
   const title = readRequiredString(formData, "title");
   const parentId = readOptionalString(formData, "parentId");
   const listPath = buildListPath(listId);
 
-  if (parentId && !getNodeById(listId, parentId)) {
-    redirect(`${listPath}?error=add`);
+  if (parentId && !services.getNodeById(listId, parentId)) {
+    return navigateTo(`${listPath}?error=add`);
   }
 
-  const result = createItem(listId, title, parentId);
+  const result = services.createItem(listId, title, parentId);
   if (!result) {
-    redirect(`${listPath}?error=add`);
+    return navigateTo(`${listPath}?error=add`);
   }
 
-  revalidateTag("lists", "max");
-  redirect(listPath);
+  revalidateListsTagSafely();
+  return navigateTo(listPath);
 }
 
 export async function deleteItemAction(formData: FormData): Promise<void> {
+  if (isBrowserRuntime()) {
+    return executeClientMutation("deleteItem", formData);
+  }
+
+  const services = await getListsServices();
   const listId = readRequiredString(formData, "listId");
   const id = readRequiredString(formData, "id");
-  const currentNode = getNodeById(listId, id);
+  const currentNode = services.getNodeById(listId, id);
   const listPath = buildListPath(listId);
 
   if (!currentNode) {
-    redirect(`${listPath}?error=delete`);
+    return navigateTo(`${listPath}?error=delete`);
   }
 
-  const result = deleteItem(listId, id);
+  const result = services.deleteItem(listId, id);
   if (!result) {
-    redirect(`${listPath}?error=delete`);
+    return navigateTo(`${listPath}?error=delete`);
   }
 
-  revalidateTag("lists", "max");
-  redirect(listPath);
+  revalidateListsTagSafely();
+  return navigateTo(listPath);
 }
 
 export async function editItemTitleAction(formData: FormData): Promise<void> {
+  if (isBrowserRuntime()) {
+    return executeClientMutation("editItemTitle", formData);
+  }
+
+  const services = await getListsServices();
   const listId = readRequiredString(formData, "listId");
   const id = readRequiredString(formData, "id");
   const title = readRequiredString(formData, "title");
-  const currentNode = getNodeById(listId, id);
+  const currentNode = services.getNodeById(listId, id);
   const listPath = buildListPath(listId);
 
   if (!currentNode) {
-    redirect(`${listPath}?error=edit`);
+    return navigateTo(`${listPath}?error=edit`);
   }
 
-  const result = updateItemTitle(listId, id, title);
+  const result = services.updateItemTitle(listId, id, title);
   if (!result) {
-    redirect(`${listPath}?error=edit`);
+    return navigateTo(`${listPath}?error=edit`);
   }
 
-  revalidateTag("lists", "max");
-  redirect(listPath);
+  revalidateListsTagSafely();
+  return navigateTo(listPath);
 }
 
 export async function createListAction(): Promise<void> {
-  const newList = createList("Sin nombre");
-  revalidateTag("lists", "max");
-  redirect(buildListPath(newList.id));
+  if (isBrowserRuntime()) {
+    return executeClientMutation("createList");
+  }
+
+  const services = await getListsServices();
+  const newList = services.createList("Sin nombre");
+  revalidateListsTagSafely();
+  return navigateTo(buildListPath(newList.id));
 }
 
 export async function editListTitleAction(formData: FormData): Promise<void> {
+  if (isBrowserRuntime()) {
+    return executeClientMutation("editListTitle", formData);
+  }
+
+  const services = await getListsServices();
   const listId = readRequiredString(formData, "listId");
   const title = readString(formData, "title");
   const listPath = buildListPath(listId);
 
-  const result = updateListTitle(listId, title);
+  const result = services.updateListTitle(listId, title);
   if (!result) {
-    redirect(`${listPath}?error=listEdit`);
+    return navigateTo(`${listPath}?error=listEdit`);
   }
 
-  revalidateTag("lists", "max");
-  redirect(listPath);
+  revalidateListsTagSafely();
+  return navigateTo(listPath);
 }
 
 export async function deleteListAction(formData: FormData): Promise<void> {
+  if (isBrowserRuntime()) {
+    return executeClientMutation("deleteList", formData);
+  }
+
+  const services = await getListsServices();
   const listId = readRequiredString(formData, "listId");
   const currentListId = readOptionalString(formData, "currentListId") ?? listId;
   const currentListPath = buildListPath(currentListId);
 
-  const deleted = deleteList(listId);
+  const deleted = services.deleteList(listId);
   if (!deleted) {
-    redirect(`${currentListPath}?error=listDelete`);
+    return navigateTo(`${currentListPath}?error=listDelete`);
   }
 
   let redirectListId = currentListId;
-  if (listId === currentListId || !getListById(currentListId)) {
-    redirectListId = getDefaultListId() ?? createList("Sin nombre").id;
+  if (listId === currentListId || !services.getListById(currentListId)) {
+    redirectListId = services.getDefaultListId() ?? services.createList("Sin nombre").id;
   }
 
-  revalidateTag("lists", "max");
-  redirect(buildListPath(redirectListId));
+  revalidateListsTagSafely();
+  return navigateTo(buildListPath(redirectListId));
 }

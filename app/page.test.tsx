@@ -1,13 +1,6 @@
-import Home from "./page";
+import type { GetServerSidePropsContext } from "next";
+import { getServerSideProps } from "@/pages/index";
 import * as services from "@/app/features/lists/services";
-
-const redirectMock = jest.fn((url: string) => {
-  throw new Error(`NEXT_REDIRECT:${url}`);
-});
-
-jest.mock("next/navigation", () => ({
-  redirect: (url: string) => redirectMock(url),
-}));
 
 jest.mock("@/app/features/lists/services", () => ({
   createList: jest.fn(),
@@ -21,20 +14,32 @@ describe("Root page", () => {
     jest.clearAllMocks();
   });
 
-  test("redirige a la lista por defecto cuando existe", () => {
+  test("redirige a la lista por defecto cuando existe", async () => {
     servicesMock.getDefaultListId.mockReturnValue("list-default");
 
-    expect(() => Home()).toThrow("NEXT_REDIRECT:/lists/list-default");
-    expect(redirectMock).toHaveBeenCalledWith("/lists/list-default");
+    const result = await getServerSideProps({} as GetServerSidePropsContext);
+
+    expect(result).toEqual({
+      redirect: {
+        destination: "/lists/list-default",
+        permanent: false,
+      },
+    });
     expect(servicesMock.createList).not.toHaveBeenCalled();
   });
 
-  test("crea una lista sin nombre cuando no hay listas y redirige", () => {
+  test("crea una lista sin nombre cuando no hay listas y redirige", async () => {
     servicesMock.getDefaultListId.mockReturnValue(undefined);
     servicesMock.createList.mockReturnValue({ id: "list-new", title: "Sin nombre", items: [] });
 
-    expect(() => Home()).toThrow("NEXT_REDIRECT:/lists/list-new");
+    const result = await getServerSideProps({} as GetServerSidePropsContext);
+
+    expect(result).toEqual({
+      redirect: {
+        destination: "/lists/list-new",
+        permanent: false,
+      },
+    });
     expect(servicesMock.createList).toHaveBeenCalledWith("Sin nombre");
-    expect(redirectMock).toHaveBeenCalledWith("/lists/list-new");
   });
 });

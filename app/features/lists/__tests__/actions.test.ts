@@ -139,6 +139,24 @@ describe("actions", () => {
     expect(servicesMock.completeParent).toHaveBeenCalledWith("list-1", "parent");
   });
 
+  test("confirmParentAction: no rompe si revalidateTag no tiene static generation store", async () => {
+    servicesMock.getNodeById.mockReturnValue({
+      id: "parent",
+      title: "Parent",
+      completed: false,
+      children: [{}],
+    });
+    servicesMock.completeParent.mockReturnValue([{ id: "parent" }]);
+    revalidateTagMock.mockImplementationOnce(() => {
+      throw new Error("Invariant: static generation store missing in revalidateTag lists");
+    });
+
+    await expect(confirmParentAction(createFormData({ listId: "list-1", id: "parent" }))).rejects.toThrow(
+      "NEXT_REDIRECT:/lists/list-1"
+    );
+    expect(redirectMock).toHaveBeenCalledWith("/lists/list-1");
+  });
+
   test("confirmUncheckParentAction: desmarca y redirige en happy path", async () => {
     servicesMock.getNodeById.mockReturnValue({
       id: "parent",
