@@ -13,7 +13,7 @@ type ListsLayoutProps = {
 export default async function ListsLayout({ children }: ListsLayoutProps) {
   const cookiesStore = await cookies();
   const defaultSidebarOpen = cookiesStore.get("sidebar_state")?.value !== "false";
-  const lists = getListSummaries();
+  const lists = await getListSummaries();
 
   return (
     <SidebarProvider defaultOpen={defaultSidebarOpen}>

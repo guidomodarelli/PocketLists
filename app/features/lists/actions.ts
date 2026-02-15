@@ -136,7 +136,7 @@ export async function toggleItemAction(formData: FormData): Promise<void> {
   const listId = readRequiredString(formData, "listId");
   const id = readRequiredString(formData, "id");
   const nextCompleted = readRequiredBoolean(formData, "nextCompleted");
-  const currentNode = services.getNodeById(listId, id);
+  const currentNode = await services.getNodeById(listId, id);
   const listPath = buildListPath(listId);
 
   if (!currentNode) {
@@ -147,7 +147,7 @@ export async function toggleItemAction(formData: FormData): Promise<void> {
     return navigateTo(`${listPath}?confirm=${encodeURIComponent(id)}`);
   }
 
-  const result = services.toggleItem(listId, id, nextCompleted);
+  const result = await services.toggleItem(listId, id, nextCompleted);
   if (!result) {
     return navigateTo(`${listPath}?error=action`);
   }
@@ -163,14 +163,14 @@ export async function confirmParentAction(formData: FormData): Promise<void> {
   const services = await getListsServices();
   const listId = readRequiredString(formData, "listId");
   const id = readRequiredString(formData, "id");
-  const currentNode = services.getNodeById(listId, id);
+  const currentNode = await services.getNodeById(listId, id);
   const listPath = buildListPath(listId);
 
   if (!currentNode) {
     return navigateTo(`${listPath}?error=action`);
   }
 
-  const result = services.completeParent(listId, id);
+  const result = await services.completeParent(listId, id);
   if (!result) {
     return navigateTo(`${listPath}?error=action`);
   }
@@ -187,14 +187,14 @@ export async function confirmUncheckParentAction(formData: FormData): Promise<vo
   const listId = readRequiredString(formData, "listId");
   const id = readRequiredString(formData, "id");
   const reopenCompletedDialog = readOptionalBoolean(formData, "reopenCompletedDialog") === true;
-  const currentNode = services.getNodeById(listId, id);
+  const currentNode = await services.getNodeById(listId, id);
   const listPath = buildListPath(listId);
 
   if (!currentNode) {
     return navigateTo(`${listPath}?error=action`);
   }
 
-  const result = services.uncheckParent(listId, id);
+  const result = await services.uncheckParent(listId, id);
   if (!result) {
     return navigateTo(`${listPath}?error=action`);
   }
@@ -210,7 +210,7 @@ export async function resetCompletedAction(formData: FormData): Promise<void> {
   const services = await getListsServices();
   const listId = readRequiredString(formData, "listId");
   const listPath = buildListPath(listId);
-  const result = services.resetCompletedItems(listId);
+  const result = await services.resetCompletedItems(listId);
   if (!result) {
     return navigateTo(`${listPath}?error=action`);
   }
@@ -229,11 +229,11 @@ export async function createItemAction(formData: FormData): Promise<void> {
   const parentId = readOptionalString(formData, "parentId");
   const listPath = buildListPath(listId);
 
-  if (parentId && !services.getNodeById(listId, parentId)) {
+  if (parentId && !(await services.getNodeById(listId, parentId))) {
     return navigateTo(`${listPath}?error=add`);
   }
 
-  const result = services.createItem(listId, title, parentId);
+  const result = await services.createItem(listId, title, parentId);
   if (!result) {
     return navigateTo(`${listPath}?error=add`);
   }
@@ -250,14 +250,14 @@ export async function deleteItemAction(formData: FormData): Promise<void> {
   const services = await getListsServices();
   const listId = readRequiredString(formData, "listId");
   const id = readRequiredString(formData, "id");
-  const currentNode = services.getNodeById(listId, id);
+  const currentNode = await services.getNodeById(listId, id);
   const listPath = buildListPath(listId);
 
   if (!currentNode) {
     return navigateTo(`${listPath}?error=delete`);
   }
 
-  const result = services.deleteItem(listId, id);
+  const result = await services.deleteItem(listId, id);
   if (!result) {
     return navigateTo(`${listPath}?error=delete`);
   }
@@ -275,14 +275,14 @@ export async function editItemTitleAction(formData: FormData): Promise<void> {
   const listId = readRequiredString(formData, "listId");
   const id = readRequiredString(formData, "id");
   const title = readRequiredString(formData, "title");
-  const currentNode = services.getNodeById(listId, id);
+  const currentNode = await services.getNodeById(listId, id);
   const listPath = buildListPath(listId);
 
   if (!currentNode) {
     return navigateTo(`${listPath}?error=edit`);
   }
 
-  const result = services.updateItemTitle(listId, id, title);
+  const result = await services.updateItemTitle(listId, id, title);
   if (!result) {
     return navigateTo(`${listPath}?error=edit`);
   }
@@ -297,7 +297,7 @@ export async function createListAction(): Promise<void> {
   }
 
   const services = await getListsServices();
-  const newList = services.createList("Sin nombre");
+  const newList = await services.createList("Sin nombre");
   revalidateListsTagSafely();
   return navigateTo(buildListPath(newList.id));
 }
@@ -312,7 +312,7 @@ export async function editListTitleAction(formData: FormData): Promise<void> {
   const title = readString(formData, "title");
   const listPath = buildListPath(listId);
 
-  const result = services.updateListTitle(listId, title);
+  const result = await services.updateListTitle(listId, title);
   if (!result) {
     return navigateTo(`${listPath}?error=listEdit`);
   }
@@ -331,14 +331,14 @@ export async function deleteListAction(formData: FormData): Promise<void> {
   const currentListId = readOptionalString(formData, "currentListId") ?? listId;
   const currentListPath = buildListPath(currentListId);
 
-  const deleted = services.deleteList(listId);
+  const deleted = await services.deleteList(listId);
   if (!deleted) {
     return navigateTo(`${currentListPath}?error=listDelete`);
   }
 
   let redirectListId = currentListId;
-  if (listId === currentListId || !services.getListById(currentListId)) {
-    redirectListId = services.getDefaultListId() ?? services.createList("Sin nombre").id;
+  if (listId === currentListId || !(await services.getListById(currentListId))) {
+    redirectListId = (await services.getDefaultListId()) ?? (await services.createList("Sin nombre")).id;
   }
 
   revalidateListsTagSafely();

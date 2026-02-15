@@ -211,8 +211,8 @@ describe("List page (pages router)", () => {
   });
 
   test("getServerSideProps obtiene datos de la lista y estado del sidebar", async () => {
-    servicesMock.getListSummaries.mockReturnValue([{ id: "list-1", title: "Lista 1" }]);
-    servicesMock.getListById.mockReturnValue({
+    servicesMock.getListSummaries.mockResolvedValue([{ id: "list-1", title: "Lista 1" }]);
+    servicesMock.getListById.mockResolvedValue({
       id: "list-1",
       title: "Lista 1",
       items: [],
@@ -236,8 +236,8 @@ describe("List page (pages router)", () => {
   });
 
   test("getServerSideProps devuelve error y sidebar cerrado cuando corresponde", async () => {
-    servicesMock.getListSummaries.mockReturnValue([{ id: "list-2", title: "Lista 2" }]);
-    servicesMock.getListById.mockReturnValue(undefined);
+    servicesMock.getListSummaries.mockResolvedValue([{ id: "list-2", title: "Lista 2" }]);
+    servicesMock.getListById.mockResolvedValue(undefined);
 
     const result = await getServerSideProps(
       createContext({

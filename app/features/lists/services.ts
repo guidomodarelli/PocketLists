@@ -1,4 +1,7 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
+import { eq, sql } from "drizzle-orm";
+import { getTursoDb } from "@/lib/db/client";
+import { listsStoreTable } from "@/lib/db/schema";
 import { INITIAL_LISTS } from "./data";
 import type { ItemNode, List, ListSummary } from "./types";
 import { findNode, normalizeTree, setSubtreeCompletion, updateNodeInTree } from "./tree";
@@ -13,59 +16,21 @@ type GlobalStore = typeof globalThis & {
 
 const globalStore = globalThis as GlobalStore;
 
-type NodeRuntimeModules = {
-  fs: typeof import("node:fs");
-  os: typeof import("node:os");
-  path: typeof import("node:path");
-};
+const STORE_RECORD_ID = "lists-store";
 
-function loadNodeRuntimeModules(): NodeRuntimeModules | null {
-  if (typeof window !== "undefined") {
-    return null;
+async function ensureStoreTable(): Promise<void> {
+  const db = getTursoDb();
+  if (!db) {
+    return;
   }
 
-  const processWithBuiltins = process as typeof process & {
-    getBuiltinModule?: (id: string) => unknown;
-  };
-
-  if (typeof processWithBuiltins.getBuiltinModule === "function") {
-    const fs = processWithBuiltins.getBuiltinModule("node:fs") ?? processWithBuiltins.getBuiltinModule("fs");
-    const os = processWithBuiltins.getBuiltinModule("node:os") ?? processWithBuiltins.getBuiltinModule("os");
-    const path = processWithBuiltins.getBuiltinModule("node:path") ?? processWithBuiltins.getBuiltinModule("path");
-
-    if (fs && os && path) {
-      return {
-        fs: fs as NodeRuntimeModules["fs"],
-        os: os as NodeRuntimeModules["os"],
-        path: path as NodeRuntimeModules["path"],
-      };
-    }
-  }
-
-  const runtimeRequire = (globalThis as { require?: (id: string) => unknown }).require;
-  if (typeof runtimeRequire === "function") {
-    try {
-      return {
-        fs: runtimeRequire("node:fs") as NodeRuntimeModules["fs"],
-        os: runtimeRequire("node:os") as NodeRuntimeModules["os"],
-        path: runtimeRequire("node:path") as NodeRuntimeModules["path"],
-      };
-    } catch {
-      return null;
-    }
-  }
-
-  return null;
-}
-
-function getStoreFilePath(runtime: NodeRuntimeModules): string {
-  const envPath = process.env.POCKET_LISTS_STORE_PATH?.trim();
-  if (envPath) {
-    return envPath;
-  }
-
-  const workspaceHash = createHash("sha1").update(process.cwd()).digest("hex").slice(0, 12);
-  return runtime.path.join(runtime.os.tmpdir(), `pocket-lists-store-${workspaceHash}.json`);
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS lists_store (
+      id TEXT PRIMARY KEY NOT NULL,
+      data TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+  `);
 }
 
 function buildInitialLists(): List[] {
@@ -95,20 +60,9 @@ function migrateLegacyStore(legacyItems: ItemNode[]): ListsStore {
   };
 }
 
-function readStoreFromDisk(): ListsStore | null {
-  const runtime = loadNodeRuntimeModules();
-  if (!runtime) {
-    return null;
-  }
-
+function parseStorePayload(payload: string): ListsStore | null {
   try {
-    const storeFilePath = getStoreFilePath(runtime);
-    if (!runtime.fs.existsSync(storeFilePath)) {
-      return null;
-    }
-
-    const raw = runtime.fs.readFileSync(storeFilePath, "utf-8");
-    const parsed = JSON.parse(raw) as unknown;
+    const parsed = JSON.parse(payload) as unknown;
     if (
       !parsed ||
       typeof parsed !== "object" ||
@@ -125,26 +79,61 @@ function readStoreFromDisk(): ListsStore | null {
   }
 }
 
-function writeStoreToDisk(store: ListsStore): void {
-  const runtime = loadNodeRuntimeModules();
-  if (!runtime) {
+async function readStoreFromTurso(): Promise<ListsStore | null> {
+  const db = getTursoDb();
+  if (!db) {
+    return null;
+  }
+
+  await ensureStoreTable();
+
+  const rows = await db
+    .select({
+      data: listsStoreTable.data,
+    })
+    .from(listsStoreTable)
+    .where(eq(listsStoreTable.id, STORE_RECORD_ID))
+    .limit(1);
+
+  const persistedData = rows[0]?.data;
+  if (!persistedData) {
+    return null;
+  }
+
+  return parseStorePayload(persistedData);
+}
+
+async function writeStoreToTurso(store: ListsStore): Promise<void> {
+  const db = getTursoDb();
+  if (!db) {
     return;
   }
 
-  try {
-    const storeFilePath = getStoreFilePath(runtime);
-    runtime.fs.mkdirSync(runtime.path.dirname(storeFilePath), { recursive: true });
-    runtime.fs.writeFileSync(storeFilePath, JSON.stringify(store), "utf-8");
-  } catch {
-    // If persistence is unavailable, continue with in-memory store.
-  }
+  await ensureStoreTable();
+
+  const serializedStore = JSON.stringify(store);
+  const updatedAt = new Date().toISOString();
+  await db
+    .insert(listsStoreTable)
+    .values({
+      id: STORE_RECORD_ID,
+      data: serializedStore,
+      updatedAt,
+    })
+    .onConflictDoUpdate({
+      target: listsStoreTable.id,
+      set: {
+        data: serializedStore,
+        updatedAt,
+      },
+    });
 }
 
-function readStore(): ListsStore {
-  const diskStore = readStoreFromDisk();
-  if (diskStore) {
-    globalStore.__pocketListsStore = diskStore;
-    return diskStore;
+async function readStore(): Promise<ListsStore> {
+  const tursoStore = await readStoreFromTurso();
+  if (tursoStore) {
+    globalStore.__pocketListsStore = tursoStore;
+    return tursoStore;
   }
 
   const currentStore = globalStore.__pocketListsStore;
@@ -152,46 +141,47 @@ function readStore(): ListsStore {
   if (!currentStore) {
     const nextStore: ListsStore = { lists: buildInitialLists() };
     globalStore.__pocketListsStore = nextStore;
-    writeStoreToDisk(nextStore);
+    await writeStoreToTurso(nextStore);
     return nextStore;
   }
 
   if ("lists" in currentStore && Array.isArray(currentStore.lists)) {
     const nextStore: ListsStore = { lists: normalizeListsStore(currentStore.lists) };
     globalStore.__pocketListsStore = nextStore;
-    writeStoreToDisk(nextStore);
+    await writeStoreToTurso(nextStore);
     return nextStore;
   }
 
   if ("items" in currentStore && Array.isArray(currentStore.items)) {
     const nextStore = migrateLegacyStore(currentStore.items);
     globalStore.__pocketListsStore = nextStore;
-    writeStoreToDisk(nextStore);
+    await writeStoreToTurso(nextStore);
     return nextStore;
   }
 
   const fallbackStore: ListsStore = { lists: buildInitialLists() };
   globalStore.__pocketListsStore = fallbackStore;
-  writeStoreToDisk(fallbackStore);
+  await writeStoreToTurso(fallbackStore);
   return fallbackStore;
 }
 
-function writeStore(lists: List[]): void {
+async function writeStore(lists: List[]): Promise<void> {
   const nextStore: ListsStore = { lists };
   globalStore.__pocketListsStore = nextStore;
-  writeStoreToDisk(nextStore);
+  await writeStoreToTurso(nextStore);
 }
 
-function getStoreLists(): List[] {
-  return readStore().lists;
+async function getStoreLists(): Promise<List[]> {
+  return (await readStore()).lists;
 }
 
-function getStoreListById(listId: string): List | undefined {
-  return getStoreLists().find((list) => list.id === listId);
+async function getStoreListById(listId: string): Promise<List | undefined> {
+  const lists = await getStoreLists();
+  return lists.find((list) => list.id === listId);
 }
 
-function writeStoreListItems(listId: string, items: ItemNode[]): ItemNode[] | null {
-  const lists = getStoreLists();
+async function writeStoreListItems(listId: string, items: ItemNode[]): Promise<ItemNode[] | null> {
+  const lists = await getStoreLists();
   const listIndex = lists.findIndex((list) => list.id === listId);
   if (listIndex === -1) {
     return null;
@@ -202,12 +192,12 @@ function writeStoreListItems(listId: string, items: ItemNode[]): ItemNode[] | nu
     ...nextLists[listIndex],
     items,
   };
-  writeStore(nextLists);
+  await writeStore(nextLists);
   return items;
 }
 
-function writeStoreListTitle(listId: string, title: string): List | null {
-  const lists = getStoreLists();
+async function writeStoreListTitle(listId: string, title: string): Promise<List | null> {
+  const lists = await getStoreLists();
   const listIndex = lists.findIndex((list) => list.id === listId);
   if (listIndex === -1) {
     return null;
@@ -218,7 +208,7 @@ function writeStoreListTitle(listId: string, title: string): List | null {
     ...nextLists[listIndex],
     title,
   };
-  writeStore(nextLists);
+  await writeStore(nextLists);
   return nextLists[listIndex];
 }
 
@@ -245,48 +235,49 @@ function removeNodeFromTree(items: ItemNode[], id: string): [ItemNode[], boolean
   return [result, changed];
 }
 
-export function getLists(): List[] {
+export async function getLists(): Promise<List[]> {
   return getStoreLists();
 }
 
-export function getListById(listId: string): List | undefined {
+export async function getListById(listId: string): Promise<List | undefined> {
   return getStoreListById(listId);
 }
 
-export function getListSummaries(): ListSummary[] {
-  return getStoreLists().map((list) => ({ id: list.id, title: list.title }));
+export async function getListSummaries(): Promise<ListSummary[]> {
+  return (await getStoreLists()).map((list) => ({ id: list.id, title: list.title }));
 }
 
-export function getDefaultListId(): string | undefined {
-  return getStoreLists()[0]?.id;
+export async function getDefaultListId(): Promise<string | undefined> {
+  return (await getStoreLists())[0]?.id;
 }
 
-export function createList(title = "Sin nombre"): List {
+export async function createList(title = "Sin nombre"): Promise<List> {
   const newList: List = {
     id: `list-${randomUUID()}`,
     title,
     items: [],
   };
 
-  writeStore([newList, ...getStoreLists()]);
+  const lists = await getStoreLists();
+  await writeStore([newList, ...lists]);
   return newList;
 }
 
-export function deleteList(listId: string): boolean {
-  const lists = getStoreLists();
+export async function deleteList(listId: string): Promise<boolean> {
+  const lists = await getStoreLists();
   const nextLists = lists.filter((list) => list.id !== listId);
 
   if (nextLists.length === lists.length) {
     return false;
   }
 
-  writeStore(nextLists);
+  await writeStore(nextLists);
   return true;
 }
 
-export function updateListTitle(listId: string, title: string): List | null {
+export async function updateListTitle(listId: string, title: string): Promise<List | null> {
   const normalizedTitle = title.trim();
-  const list = getStoreListById(listId);
+  const list = await getStoreListById(listId);
   if (!list) {
     return null;
   }
@@ -298,16 +289,20 @@ export function updateListTitle(listId: string, title: string): List | null {
   return writeStoreListTitle(listId, normalizedTitle);
 }
 
-export function getNodeById(listId: string, id: string): ItemNode | undefined {
-  const list = getStoreListById(listId);
+export async function getNodeById(listId: string, id: string): Promise<ItemNode | undefined> {
+  const list = await getStoreListById(listId);
   if (!list) {
     return undefined;
   }
   return findNode(list.items, id);
 }
 
-export function toggleItem(listId: string, id: string, nextCompleted: boolean): ItemNode[] | null {
-  const list = getStoreListById(listId);
+export async function toggleItem(
+  listId: string,
+  id: string,
+  nextCompleted: boolean
+): Promise<ItemNode[] | null> {
+  const list = await getStoreListById(listId);
   if (!list) {
     return null;
   }
@@ -323,8 +318,8 @@ export function toggleItem(listId: string, id: string, nextCompleted: boolean): 
   return writeStoreListItems(listId, normalized);
 }
 
-export function completeParent(listId: string, id: string): ItemNode[] | null {
-  const list = getStoreListById(listId);
+export async function completeParent(listId: string, id: string): Promise<ItemNode[] | null> {
+  const list = await getStoreListById(listId);
   if (!list) {
     return null;
   }
@@ -334,8 +329,8 @@ export function completeParent(listId: string, id: string): ItemNode[] | null {
   return writeStoreListItems(listId, normalized);
 }
 
-export function uncheckParent(listId: string, id: string): ItemNode[] | null {
-  const list = getStoreListById(listId);
+export async function uncheckParent(listId: string, id: string): Promise<ItemNode[] | null> {
+  const list = await getStoreListById(listId);
   if (!list) {
     return null;
   }
@@ -345,8 +340,8 @@ export function uncheckParent(listId: string, id: string): ItemNode[] | null {
   return writeStoreListItems(listId, normalized);
 }
 
-export function resetCompletedItems(listId: string): ItemNode[] | null {
-  const list = getStoreListById(listId);
+export async function resetCompletedItems(listId: string): Promise<ItemNode[] | null> {
+  const list = await getStoreListById(listId);
   if (!list) {
     return null;
   }
@@ -356,8 +351,8 @@ export function resetCompletedItems(listId: string): ItemNode[] | null {
   return writeStoreListItems(listId, normalized);
 }
 
-export function createItem(listId: string, title: string, parentId?: string): ItemNode[] | null {
-  const list = getStoreListById(listId);
+export async function createItem(listId: string, title: string, parentId?: string): Promise<ItemNode[] | null> {
+  const list = await getStoreListById(listId);
   if (!list) {
     return null;
   }
@@ -389,8 +384,8 @@ export function createItem(listId: string, title: string, parentId?: string): It
   return writeStoreListItems(listId, normalized);
 }
 
-export function deleteItem(listId: string, id: string): ItemNode[] | null {
-  const list = getStoreListById(listId);
+export async function deleteItem(listId: string, id: string): Promise<ItemNode[] | null> {
+  const list = await getStoreListById(listId);
   if (!list) {
     return null;
   }
@@ -404,8 +399,12 @@ export function deleteItem(listId: string, id: string): ItemNode[] | null {
   return writeStoreListItems(listId, normalized);
 }
 
-export function updateItemTitle(listId: string, id: string, title: string): ItemNode[] | null {
-  const list = getStoreListById(listId);
+export async function updateItemTitle(
+  listId: string,
+  id: string,
+  title: string
+): Promise<ItemNode[] | null> {
+  const list = await getStoreListById(listId);
   if (!list) {
     return null;
   }

@@ -63,9 +63,9 @@ export const getServerSideProps = (async ({ params, query, req }) => {
     normalizedListId = listId;
   }
 
-  const lists = getListSummaries();
+  const lists = await getListSummaries();
   const defaultSidebarOpen = req.cookies?.sidebar_state !== "false";
-  const activeList = getListById(normalizedListId);
+  const activeList = await getListById(normalizedListId);
 
   if (!activeList) {
     return {
