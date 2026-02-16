@@ -1,6 +1,7 @@
 import type { GetServerSideProps } from "next";
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/router";
+import Loading from "@/app/loading";
 import TreeList from "@/app/features/lists/components/TreeList/TreeList";
 import Link from "@/app/features/lists/components/Link/Link";
 import AddRootItemButton from "@/app/features/lists/components/AddRootItemButton/AddRootItemButton";
@@ -351,9 +352,7 @@ export default function ListPage({
           onEditListTitle={handleEditListTitle}
           onDeleteList={handleDeleteList}
         >
-          <PageShell>
-            <div className={styles["home-page__inline-state"]}>Cargando listas...</div>
-          </PageShell>
+          <Loading />
         </ListsPageLayout>
       );
     }
