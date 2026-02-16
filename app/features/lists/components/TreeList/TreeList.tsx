@@ -3,14 +3,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  confirmParentAction,
-  confirmUncheckParentAction,
-  createItemAction,
-  deleteItemAction,
-  editItemTitleAction,
-  toggleItemAction,
-} from "../../actions";
 import type { TreeMode, VisibleNode } from "../../types";
 import {
   Dialog,
@@ -43,6 +35,16 @@ type TreeListProps = {
   mode: TreeMode;
   listId: string;
   depth?: number;
+  onToggleItem?: (listId: string, id: string, nextCompleted: boolean) => Promise<unknown> | unknown;
+  onConfirmParent?: (listId: string, id: string) => Promise<unknown> | unknown;
+  onConfirmUncheckParent?: (
+    listId: string,
+    id: string,
+    reopenCompletedDialog: boolean
+  ) => Promise<unknown> | unknown;
+  onCreateItem?: (listId: string, title: string, parentId?: string) => Promise<unknown> | unknown;
+  onDeleteItem?: (listId: string, id: string) => Promise<unknown> | unknown;
+  onEditItemTitle?: (listId: string, id: string, title: string) => Promise<unknown> | unknown;
 };
 
 type ParentModalAction =
@@ -63,7 +65,18 @@ type DeleteModalAction =
 
 const COMPLETION_ANIMATION_MS = 450;
 
-export default function TreeList({ nodes, mode, listId, depth = 0 }: TreeListProps) {
+export default function TreeList({
+  nodes,
+  mode,
+  listId,
+  depth = 0,
+  onToggleItem = () => undefined,
+  onConfirmParent = () => undefined,
+  onConfirmUncheckParent = () => undefined,
+  onCreateItem = () => undefined,
+  onDeleteItem = () => undefined,
+  onEditItemTitle = () => undefined,
+}: TreeListProps) {
   const [parentModalAction, setParentModalAction] = useState<ParentModalAction>(null);
   const [deleteModalAction, setDeleteModalAction] = useState<DeleteModalAction>(null);
   const [editingItem, setEditingItem] = useState<{ id: string; title: string } | null>(null);
@@ -228,7 +241,7 @@ export default function TreeList({ nodes, mode, listId, depth = 0 }: TreeListPro
       if (customEvent.detail?.listId !== listId) {
         return;
       }
-      ignoreDraftRootBlurUntilRef.current = Date.now() + 250;
+      ignoreDraftRootBlurUntilRef.current = customEvent.timeStamp + 250;
       setEditingItem(null);
       setDraftChild(null);
       setDraftRootTitle("");
@@ -244,8 +257,8 @@ export default function TreeList({ nodes, mode, listId, depth = 0 }: TreeListPro
 
   const closeParentModal = () => setParentModalAction(null);
   const closeDeleteModal = () => setDeleteModalAction(null);
-  const openItemEditMode = (item: { id: string; title: string }) => {
-    ignoreBlurUntilRef.current = Date.now() + 250;
+  const openItemEditMode = (item: { id: string; title: string }, triggerTimestamp: number) => {
+    ignoreBlurUntilRef.current = triggerTimestamp + 250;
     setEditingItem({ id: item.id, title: item.title });
     window.setTimeout(() => {
       const input = editInputRef.current;
@@ -257,9 +270,6 @@ export default function TreeList({ nodes, mode, listId, depth = 0 }: TreeListPro
       input.setSelectionRange(end, end);
     }, 60);
   };
-
-  const parentAction =
-    parentModalAction?.intent === "complete" ? confirmParentAction : confirmUncheckParentAction;
 
   return (
     <>
@@ -286,10 +296,9 @@ export default function TreeList({ nodes, mode, listId, depth = 0 }: TreeListPro
               <div className={styles["tree-list__content"]}>
                 <div className={styles["tree-list__text-wrap"]}>
                   <form
-                    action={createItemAction}
                     className={styles["tree-list__edit-form"]}
                     onBlur={(event) => {
-                      if (Date.now() < ignoreDraftRootBlurUntilRef.current) {
+                      if (event.timeStamp < ignoreDraftRootBlurUntilRef.current) {
                         return;
                       }
                       const nextFocused = event.relatedTarget as Node | null;
@@ -298,8 +307,18 @@ export default function TreeList({ nodes, mode, listId, depth = 0 }: TreeListPro
                       }
                       setDraftRootTitle(null);
                     }}
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      const nextTitle = (draftRootTitle ?? "").trim();
+                      if (nextTitle.length === 0) {
+                        setDraftRootTitle(null);
+                        return;
+                      }
+
+                      setDraftRootTitle(null);
+                      void onCreateItem(listId, nextTitle);
+                    }}
                   >
-                    <input type="hidden" name="listId" value={listId} />
                     <InputGroup className={styles["tree-list__edit-input-group"]}>
                       <InputGroupInput
                         ref={draftRootInputRef}
@@ -341,7 +360,6 @@ export default function TreeList({ nodes, mode, listId, depth = 0 }: TreeListPro
               ? "indeterminate"
               : false;
           const isCompletionAnimating = completionAnimations[node.id] === true;
-          const toggleFormId = `toggle-item-${node.id}`;
           const isEditing = editingItem?.id === node.id;
           const isAddingDraftChild = draftChild?.parentId === node.id;
 
@@ -443,14 +461,7 @@ export default function TreeList({ nodes, mode, listId, depth = 0 }: TreeListPro
                     />
                   </span>
                 ) : (
-                  <form
-                    id={toggleFormId}
-                    action={toggleItemAction}
-                    className={styles["tree-list__toggle-form"]}
-                  >
-                    <input type="hidden" name="listId" value={listId} />
-                    <input type="hidden" name="id" value={node.id} />
-                    <input type="hidden" name="nextCompleted" value={nextCompletedValue} />
+                  <span className={styles["tree-list__toggle-form"]}>
                     <Checkbox
                       checked={checkboxState}
                       aria-label={`Cambiar estado de ${node.title}`}
@@ -459,21 +470,19 @@ export default function TreeList({ nodes, mode, listId, depth = 0 }: TreeListPro
                         if (nextCompletedValue === "true") {
                           startCompletionAnimation(node.id);
                         }
-                        const form = document.getElementById(toggleFormId) as HTMLFormElement | null;
-                        form?.requestSubmit();
+                        void onToggleItem(listId, node.id, nextCompletedValue === "true");
                       }}
                     />
-                  </form>
+                  </span>
                 )}
                 <div className={styles["tree-list__content"]}>
                   <div className={styles["tree-list__text-wrap"]}>
                     {isEditing ? (
                       <form
                         ref={editFormRef}
-                        action={editItemTitleAction}
                         className={styles["tree-list__edit-form"]}
                         onBlur={(event) => {
-                          if (Date.now() < ignoreBlurUntilRef.current) {
+                          if (event.timeStamp < ignoreBlurUntilRef.current) {
                             return;
                           }
                           const nextFocused = event.relatedTarget as Node | null;
@@ -491,9 +500,18 @@ export default function TreeList({ nodes, mode, listId, depth = 0 }: TreeListPro
                           }
                           editFormRef.current?.requestSubmit();
                         }}
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          const nextTitle = editingItem?.id === node.id ? editingItem.title.trim() : "";
+                          if (nextTitle.length === 0 || nextTitle === node.title.trim()) {
+                            setEditingItem(null);
+                            return;
+                          }
+
+                          setEditingItem(null);
+                          void onEditItemTitle(listId, node.id, nextTitle);
+                        }}
                       >
-                        <input type="hidden" name="listId" value={listId} />
-                        <input type="hidden" name="id" value={node.id} />
                         <InputGroup className={styles["tree-list__edit-input-group"]}>
                           <InputGroupInput
                             ref={editInputRef}
@@ -543,7 +561,8 @@ export default function TreeList({ nodes, mode, listId, depth = 0 }: TreeListPro
                           node.completed && styles["tree-list__title--completed"],
                         )}
                         disabled={hasDraftRoot || Boolean(draftChild) || Boolean(editingItem)}
-                        onClick={() => openItemEditMode({ id: node.id, title: node.title })}
+                        onClick={(event) =>
+                          openItemEditMode({ id: node.id, title: node.title }, event.timeStamp)}
                       >
                         {node.title}
                       </button>
@@ -559,8 +578,8 @@ export default function TreeList({ nodes, mode, listId, depth = 0 }: TreeListPro
                       aria-label={`Agregar hijo a ${node.title}`}
                       className={styles["tree-list__add-child-link"]}
                       disabled={Boolean(editingItem) || Boolean(draftChild) || hasDraftRoot}
-                      onClick={() => {
-                        ignoreDraftBlurUntilRef.current = Date.now() + 250;
+                      onClick={(event) => {
+                        ignoreDraftBlurUntilRef.current = event.timeStamp + 250;
                         setEditingItem(null);
                         setDraftChild({ parentId: node.id, title: "" });
                       }}
@@ -590,8 +609,8 @@ export default function TreeList({ nodes, mode, listId, depth = 0 }: TreeListPro
                         >
                           <DropdownMenuItem
                             aria-label={`Editar ${node.title}`}
-                            onSelect={() => {
-                              openItemEditMode({ id: node.id, title: node.title });
+                            onSelect={(event) => {
+                              openItemEditMode({ id: node.id, title: node.title }, event.timeStamp);
                             }}
                           >
                             <Pencil className={styles["tree-list__edit-icon"]} />
@@ -635,10 +654,9 @@ export default function TreeList({ nodes, mode, listId, depth = 0 }: TreeListPro
                       <div className={styles["tree-list__content"]}>
                         <div className={styles["tree-list__text-wrap"]}>
                           <form
-                            action={createItemAction}
                             className={styles["tree-list__edit-form"]}
                             onBlur={(event) => {
-                              if (Date.now() < ignoreDraftBlurUntilRef.current) {
+                              if (event.timeStamp < ignoreDraftBlurUntilRef.current) {
                                 return;
                               }
                               const nextFocused = event.relatedTarget as Node | null;
@@ -647,9 +665,18 @@ export default function TreeList({ nodes, mode, listId, depth = 0 }: TreeListPro
                               }
                               setDraftChild(null);
                             }}
+                            onSubmit={(event) => {
+                              event.preventDefault();
+                              const nextTitle = draftChild.title.trim();
+                              if (nextTitle.length === 0) {
+                                setDraftChild(null);
+                                return;
+                              }
+
+                              setDraftChild(null);
+                              void onCreateItem(listId, nextTitle, node.id);
+                            }}
                           >
-                            <input type="hidden" name="listId" value={listId} />
-                            <input type="hidden" name="parentId" value={node.id} />
                             <InputGroup className={styles["tree-list__edit-input-group"]}>
                               <InputGroupInput
                                 ref={draftChildInputRef}
@@ -685,7 +712,18 @@ export default function TreeList({ nodes, mode, listId, depth = 0 }: TreeListPro
                 </ul>
               ) : null}
               {node.children.length > 0 ? (
-                <TreeList nodes={node.children} mode={mode} listId={listId} depth={depth + 1} />
+                <TreeList
+                  nodes={node.children}
+                  mode={mode}
+                  listId={listId}
+                  depth={depth + 1}
+                  onToggleItem={onToggleItem}
+                  onConfirmParent={onConfirmParent}
+                  onConfirmUncheckParent={onConfirmUncheckParent}
+                  onCreateItem={onCreateItem}
+                  onDeleteItem={onDeleteItem}
+                  onEditItemTitle={onEditItemTitle}
+                />
               ) : null}
             </li>
           );
@@ -726,18 +764,24 @@ export default function TreeList({ nodes, mode, listId, depth = 0 }: TreeListPro
               <Button variant="outline">Cancelar</Button>
             </DialogClose>
             {parentModalAction ? (
-              <form action={parentAction}>
-                <input type="hidden" name="listId" value={listId} />
-                <input type="hidden" name="id" value={parentModalAction.id} />
-                {parentModalAction.intent === "uncheck" && mode === "completed" ? (
-                  <input type="hidden" name="reopenCompletedDialog" value="true" />
-                ) : null}
-                <Button type="submit">
-                  {parentModalAction.intent === "complete"
-                    ? "Confirmar y completar todo"
-                    : "Confirmar y desmarcar"}
-                </Button>
-              </form>
+              <Button
+                onClick={() => {
+                  if (parentModalAction.intent === "complete") {
+                    void onConfirmParent(listId, parentModalAction.id);
+                  } else {
+                    void onConfirmUncheckParent(
+                      listId,
+                      parentModalAction.id,
+                      mode === "completed"
+                    );
+                  }
+                  closeParentModal();
+                }}
+              >
+                {parentModalAction.intent === "complete"
+                  ? "Confirmar y completar todo"
+                  : "Confirmar y desmarcar"}
+              </Button>
             ) : null}
           </DialogFooter>
         </DialogContent>
@@ -775,13 +819,16 @@ export default function TreeList({ nodes, mode, listId, depth = 0 }: TreeListPro
               <Button variant="outline">Cancelar</Button>
             </DialogClose>
             {deleteModalAction ? (
-              <form action={deleteItemAction}>
-                <input type="hidden" name="listId" value={listId} />
-                <input type="hidden" name="id" value={deleteModalAction.id} />
-                <Button type="submit" variant="destructive">
-                  Confirmar eliminación
-                </Button>
-              </form>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => {
+                  void onDeleteItem(listId, deleteModalAction.id);
+                  closeDeleteModal();
+                }}
+              >
+                Confirmar eliminación
+              </Button>
             ) : null}
           </DialogFooter>
         </DialogContent>

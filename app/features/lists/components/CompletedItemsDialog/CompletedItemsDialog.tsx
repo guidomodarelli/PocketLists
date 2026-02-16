@@ -21,6 +21,16 @@ type CompletedItemsDialogProps = {
   canResetCompleted: boolean;
   listId: string;
   openOnLoad?: boolean;
+  onToggleItem?: (listId: string, id: string, nextCompleted: boolean) => Promise<unknown> | unknown;
+  onConfirmParent?: (listId: string, id: string) => Promise<unknown> | unknown;
+  onConfirmUncheckParent?: (
+    listId: string,
+    id: string,
+    reopenCompletedDialog: boolean
+  ) => Promise<unknown> | unknown;
+  onCreateItem?: (listId: string, title: string, parentId?: string) => Promise<unknown> | unknown;
+  onDeleteItem?: (listId: string, id: string) => Promise<unknown> | unknown;
+  onEditItemTitle?: (listId: string, id: string, title: string) => Promise<unknown> | unknown;
 };
 
 export default function CompletedItemsDialog({
@@ -29,6 +39,12 @@ export default function CompletedItemsDialog({
   canResetCompleted,
   listId,
   openOnLoad = false,
+  onToggleItem = () => undefined,
+  onConfirmParent = () => undefined,
+  onConfirmUncheckParent = () => undefined,
+  onCreateItem = () => undefined,
+  onDeleteItem = () => undefined,
+  onEditItemTitle = () => undefined,
 }: CompletedItemsDialogProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -73,7 +89,17 @@ export default function CompletedItemsDialog({
           </div>
         ) : null}
         <div className={styles["completed-items-dialog__list"]}>
-          <TreeList nodes={nodes} mode="completed" listId={listId} />
+          <TreeList
+            nodes={nodes}
+            mode="completed"
+            listId={listId}
+            onToggleItem={onToggleItem}
+            onConfirmParent={onConfirmParent}
+            onConfirmUncheckParent={onConfirmUncheckParent}
+            onCreateItem={onCreateItem}
+            onDeleteItem={onDeleteItem}
+            onEditItemTitle={onEditItemTitle}
+          />
         </div>
       </DialogContent>
     </Dialog>

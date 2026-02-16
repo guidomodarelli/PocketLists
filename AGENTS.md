@@ -6,6 +6,12 @@
 - `npm run start`: serves the production build after `npm run build`.
 - `npm run lint`: runs ESLint with Next.js Core Web Vitals + TypeScript rules.
 
+## Validaciones obligatorias antes de cerrar cambios
+
+- **Testing/debug de UI obligatorio con `chrome-devtools MCP`**: para cambios de frontend, validar comportamiento real en navegador usando MCP (flujos críticos, errores de consola y regresiones visuales/funcionales).
+- **`npm run lint` obligatorio**: ejecutar linter en cada entrega y corregir todos los errores reportados antes de dar por terminado un cambio.
+- **`npm run build` obligatorio**: ejecutar build de producción y confirmar que compile exitosamente antes de cerrar la tarea o abrir PR.
+
 ## Coding Style & Naming Conventions
 - Language: TypeScript with `strict` mode enabled; prefer explicit types for non-trivial data structures.
 

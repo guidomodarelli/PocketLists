@@ -24,15 +24,20 @@ function applyTheme(theme: ThemeMode) {
   window.localStorage.setItem(THEME_STORAGE_KEY, theme);
 }
 
+function resolveInitialTheme(): ThemeMode {
+  if (typeof window === "undefined") {
+    return "dark";
+  }
+
+  return getStoredTheme() ?? "dark";
+}
+
 export default function ThemeToggle() {
-  const [theme, setTheme] = useState<ThemeMode>("dark");
+  const [theme, setTheme] = useState<ThemeMode>(resolveInitialTheme);
 
   useEffect(() => {
-    const initialTheme = getStoredTheme() ?? "dark";
-
-    setTheme(initialTheme);
-    applyTheme(initialTheme);
-  }, []);
+    applyTheme(theme);
+  }, [theme]);
 
   const buttonLabel = theme === "dark" ? "Activar modo claro" : "Activar modo oscuro";
 
