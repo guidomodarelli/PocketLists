@@ -1,0 +1,383 @@
+import { randomUUID } from "node:crypto";
+import { asc, eq, sql } from "drizzle-orm";
+import { getTursoDb } from "@/lib/db/client";
+import { INITIAL_LISTS } from "@/app/features/lists/data";
+import { itemsTable, listsStoreTable, listsTable } from "@/lib/db/schema";
+import type { ItemNode } from "../../domain/entities/ItemNode";
+import type { List } from "../../domain/entities/List";
+import type { ListsRepository } from "../../domain/repositories/ListsRepository";
+import { normalizeTree } from "../../domain/services/tree";
+import { buildTreeFromRecords, flattenTreeToRecords, type ItemRecord } from "../mappers/listTreeMapper";
+
+type ListsStorePayload = {
+  lists: List[];
+};
+
+type LegacyStore = typeof globalThis & {
+  __pocketListsStore?: unknown;
+};
+
+const STORE_RECORD_ID = "lists-store";
+
+function buildInitialLists(): List[] {
+  return INITIAL_LISTS.map((list) => ({
+    id: list.id,
+    title: list.title,
+    items: normalizeTree(list.items),
+  }));
+}
+
+function parseListsStorePayload(payload: string): List[] | null {
+  try {
+    const parsed = JSON.parse(payload) as unknown;
+    if (
+      !parsed ||
+      typeof parsed !== "object" ||
+      !("lists" in parsed) ||
+      !Array.isArray((parsed as { lists?: unknown }).lists)
+    ) {
+      return null;
+    }
+
+    return normalizeTreeLists((parsed as ListsStorePayload).lists);
+  } catch {
+    return null;
+  }
+}
+
+function normalizeTreeLists(lists: List[]): List[] {
+  return lists.map((list) => ({
+    id: list.id,
+    title: list.title,
+    items: normalizeTree(list.items ?? []),
+  }));
+}
+
+function readLegacyInMemoryStore(): List[] | null {
+  const globalStore = globalThis as LegacyStore;
+  const store = globalStore.__pocketListsStore;
+  if (!store || typeof store !== "object") {
+    return null;
+  }
+
+  if ("lists" in store && Array.isArray((store as { lists?: unknown }).lists)) {
+    return normalizeTreeLists((store as ListsStorePayload).lists);
+  }
+
+  if ("items" in store && Array.isArray((store as { items?: unknown }).items)) {
+    const fallbackBaseList = INITIAL_LISTS[0];
+    return [
+      {
+        id: fallbackBaseList?.id ?? `list-${randomUUID()}`,
+        title: fallbackBaseList?.title ?? "Sin nombre",
+        items: normalizeTree((store as { items: ItemNode[] }).items),
+      },
+    ];
+  }
+
+  return null;
+}
+
+export class TursoListsRepository implements ListsRepository {
+  private initialized = false;
+
+  private getDb() {
+    const db = getTursoDb();
+    if (!db) {
+      throw new Error("Database no configurada. Definí TURSO_DATABASE_URL para operar con listas.");
+    }
+    return db;
+  }
+
+  private async ensureLegacyStoreTable(): Promise<void> {
+    const db = this.getDb();
+    await db.run(sql`
+      CREATE TABLE IF NOT EXISTS lists_store (
+        id TEXT PRIMARY KEY NOT NULL,
+        data TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    `);
+  }
+
+  private async ensureRelationalTables(): Promise<void> {
+    const db = this.getDb();
+    await db.run(sql`PRAGMA foreign_keys = ON`);
+    await db.run(sql`
+      CREATE TABLE IF NOT EXISTS lists (
+        id TEXT PRIMARY KEY NOT NULL,
+        title TEXT NOT NULL,
+        position INTEGER NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    `);
+    await db.run(sql`
+      CREATE TABLE IF NOT EXISTS items (
+        id TEXT PRIMARY KEY NOT NULL,
+        list_id TEXT NOT NULL,
+        parent_id TEXT,
+        title TEXT NOT NULL,
+        completed INTEGER NOT NULL,
+        position INTEGER NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (list_id) REFERENCES lists(id) ON DELETE CASCADE,
+        FOREIGN KEY (parent_id) REFERENCES items(id) ON DELETE CASCADE
+      )
+    `);
+    await db.run(sql`CREATE INDEX IF NOT EXISTS idx_items_list_id ON items(list_id)`);
+    await db.run(sql`CREATE INDEX IF NOT EXISTS idx_items_parent_id ON items(parent_id)`);
+  }
+
+  private async hasRelationalData(): Promise<boolean> {
+    const db = this.getDb();
+    const rows = await db.select({ count: sql<number>`count(*)` }).from(listsTable);
+    const count = Number(rows[0]?.count ?? 0);
+    return count > 0;
+  }
+
+  private async readListsFromStoreTable(): Promise<List[] | null> {
+    await this.ensureLegacyStoreTable();
+    const db = this.getDb();
+
+    const rows = await db
+      .select({ data: listsStoreTable.data })
+      .from(listsStoreTable)
+      .where(eq(listsStoreTable.id, STORE_RECORD_ID))
+      .limit(1);
+
+    const payload = rows[0]?.data;
+    if (!payload) {
+      return null;
+    }
+
+    return parseListsStorePayload(payload);
+  }
+
+  private async replaceAllLists(lists: List[]): Promise<void> {
+    const db = this.getDb();
+    const normalizedLists = normalizeTreeLists(lists);
+    const now = new Date().toISOString();
+
+    await db.transaction(async (tx) => {
+      await tx.delete(itemsTable);
+      await tx.delete(listsTable);
+
+      if (normalizedLists.length > 0) {
+        await tx.insert(listsTable).values(
+          normalizedLists.map((list, position) => ({
+            id: list.id,
+            title: list.title,
+            position,
+            createdAt: now,
+            updatedAt: now,
+          }))
+        );
+      }
+
+      const itemRows = normalizedLists.flatMap((list) =>
+        flattenTreeToRecords(list.id, list.items).map((item) => ({
+          id: item.id,
+          listId: item.listId,
+          parentId: item.parentId,
+          title: item.title,
+          completed: item.completed,
+          position: item.position,
+          createdAt: now,
+          updatedAt: now,
+        }))
+      );
+
+      if (itemRows.length > 0) {
+        await tx.insert(itemsTable).values(itemRows);
+      }
+    });
+  }
+
+  private async bootstrapFromLegacyStores(): Promise<void> {
+    if (await this.hasRelationalData()) {
+      return;
+    }
+
+    const fromMemory = readLegacyInMemoryStore();
+    if (fromMemory && fromMemory.length > 0) {
+      await this.replaceAllLists(fromMemory);
+      return;
+    }
+
+    const fromStoreTable = await this.readListsFromStoreTable();
+    if (fromStoreTable && fromStoreTable.length > 0) {
+      await this.replaceAllLists(fromStoreTable);
+      return;
+    }
+
+    await this.replaceAllLists(buildInitialLists());
+  }
+
+  async initialize(): Promise<void> {
+    if (this.initialized) {
+      return;
+    }
+
+    await this.ensureRelationalTables();
+    await this.bootstrapFromLegacyStores();
+    this.initialized = true;
+  }
+
+  async getLists(): Promise<List[]> {
+    await this.initialize();
+    const db = this.getDb();
+    const listRows = await db
+      .select({
+        id: listsTable.id,
+        title: listsTable.title,
+      })
+      .from(listsTable)
+      .orderBy(asc(listsTable.position));
+
+    const itemRows = await db
+      .select({
+        id: itemsTable.id,
+        listId: itemsTable.listId,
+        parentId: itemsTable.parentId,
+        title: itemsTable.title,
+        completed: itemsTable.completed,
+        position: itemsTable.position,
+      })
+      .from(itemsTable)
+      .orderBy(asc(itemsTable.position));
+
+    const rowsByList = new Map<string, ItemRecord[]>();
+    for (const row of itemRows) {
+      const current = rowsByList.get(row.listId) ?? [];
+      current.push({
+        id: row.id,
+        listId: row.listId,
+        parentId: row.parentId,
+        title: row.title,
+        completed: row.completed,
+        position: row.position,
+      });
+      rowsByList.set(row.listId, current);
+    }
+
+    return listRows.map((list) => ({
+      id: list.id,
+      title: list.title,
+      items: normalizeTree(buildTreeFromRecords(rowsByList.get(list.id) ?? [])),
+    }));
+  }
+
+  async getListById(listId: string): Promise<List | undefined> {
+    const lists = await this.getLists();
+    return lists.find((list) => list.id === listId);
+  }
+
+  async createList(title: string): Promise<List> {
+    await this.initialize();
+    const db = this.getDb();
+    const id = `list-${randomUUID()}`;
+    const now = new Date().toISOString();
+
+    await db.transaction(async (tx) => {
+      await tx.run(sql`UPDATE lists SET position = position + 1`);
+      await tx.insert(listsTable).values({
+        id,
+        title,
+        position: 0,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+
+    return {
+      id,
+      title,
+      items: [],
+    };
+  }
+
+  async deleteList(listId: string): Promise<boolean> {
+    await this.initialize();
+    const db = this.getDb();
+    const existing = await db
+      .select({ id: listsTable.id })
+      .from(listsTable)
+      .where(eq(listsTable.id, listId))
+      .limit(1);
+
+    if (!existing[0]) {
+      return false;
+    }
+
+    await db.delete(listsTable).where(eq(listsTable.id, listId));
+    return true;
+  }
+
+  async updateListTitle(listId: string, title: string): Promise<List | null> {
+    await this.initialize();
+    const db = this.getDb();
+    const existing = await db
+      .select({ id: listsTable.id })
+      .from(listsTable)
+      .where(eq(listsTable.id, listId))
+      .limit(1);
+
+    if (!existing[0]) {
+      return null;
+    }
+
+    await db
+      .update(listsTable)
+      .set({ title, updatedAt: new Date().toISOString() })
+      .where(eq(listsTable.id, listId));
+
+    const list = await this.getListById(listId);
+    return list ?? null;
+  }
+
+  async saveListItems(listId: string, items: ItemNode[]): Promise<ItemNode[] | null> {
+    await this.initialize();
+    const db = this.getDb();
+
+    const exists = await db
+      .select({ id: listsTable.id })
+      .from(listsTable)
+      .where(eq(listsTable.id, listId))
+      .limit(1);
+    if (!exists[0]) {
+      return null;
+    }
+
+    const normalizedItems = normalizeTree(items);
+    const now = new Date().toISOString();
+    const flatRows = flattenTreeToRecords(listId, normalizedItems);
+
+    await db.transaction(async (tx) => {
+      await tx.delete(itemsTable).where(eq(itemsTable.listId, listId));
+
+      if (flatRows.length > 0) {
+        await tx.insert(itemsTable).values(
+          flatRows.map((item) => ({
+            id: item.id,
+            listId: item.listId,
+            parentId: item.parentId,
+            title: item.title,
+            completed: item.completed,
+            position: item.position,
+            createdAt: now,
+            updatedAt: now,
+          }))
+        );
+      }
+
+      await tx
+        .update(listsTable)
+        .set({ updatedAt: now })
+        .where(eq(listsTable.id, listId));
+    });
+
+    return normalizedItems;
+  }
+}

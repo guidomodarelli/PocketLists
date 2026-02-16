@@ -139,7 +139,11 @@ export function useListsMutations(listId: string, options: UseListsMutationsOpti
     payload: Record<string, string | boolean | undefined>
   ) => {
     const normalizedPayload = normalizePayload(payload);
-    return mutation.mutateAsync({ action, payload: normalizedPayload });
+    try {
+      return await mutation.mutateAsync({ action, payload: normalizedPayload });
+    } catch {
+      return null;
+    }
   };
 
   return {
