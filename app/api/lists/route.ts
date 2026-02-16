@@ -107,7 +107,7 @@ export async function GET(request: Request) {
     return NextResponse.json<ApiError>(validation.error, { status: 400 });
   }
 
-  const requestedListId = searchParams.get("listId") ?? getDefaultListId();
+  const requestedListId = searchParams.get("listId") ?? (await getDefaultListId());
   if (!requestedListId) {
     return NextResponse.json<ApiError>(
       {
@@ -118,7 +118,7 @@ export async function GET(request: Request) {
     );
   }
 
-  const activeList = getListById(requestedListId);
+  const activeList = await getListById(requestedListId);
   if (!activeList) {
     return NextResponse.json<ApiError>(
       {
@@ -130,7 +130,7 @@ export async function GET(request: Request) {
   }
 
   const response: ListsResponse = {
-    lists: getListSummaries(),
+    lists: await getListSummaries(),
     activeList,
   };
 
@@ -163,7 +163,7 @@ export async function POST(request: Request) {
   }
 
   if (action === "createList") {
-    const newList = createList("Sin nombre");
+    const newList = await createList("Sin nombre");
     return respondRedirect(buildListPath(newList.id));
   }
 
@@ -188,7 +188,7 @@ export async function POST(request: Request) {
       return respondRedirect(`${listPath}?error=action`);
     }
 
-    const currentNode = getNodeById(listId, id);
+    const currentNode = await getNodeById(listId, id);
     if (!currentNode) {
       return respondRedirect(`${listPath}?error=action`);
     }
@@ -197,17 +197,17 @@ export async function POST(request: Request) {
       return respondRedirect(`${listPath}?confirm=${encodeURIComponent(id)}`);
     }
 
-    const result = toggleItem(listId, id, nextCompleted);
+    const result = await toggleItem(listId, id, nextCompleted);
     return respondRedirect(result ? listPath : `${listPath}?error=action`);
   }
 
   if (action === "confirmParent") {
     const id = readRequiredString(payload, "id");
-    if (!id || !getNodeById(listId, id)) {
+    if (!id || !(await getNodeById(listId, id))) {
       return respondRedirect(`${listPath}?error=action`);
     }
 
-    const result = completeParent(listId, id);
+    const result = await completeParent(listId, id);
     return respondRedirect(result ? listPath : `${listPath}?error=action`);
   }
 
@@ -215,11 +215,11 @@ export async function POST(request: Request) {
     const id = readRequiredString(payload, "id");
     const reopenCompletedDialog = readBoolean(payload, "reopenCompletedDialog") === true;
 
-    if (!id || !getNodeById(listId, id)) {
+    if (!id || !(await getNodeById(listId, id))) {
       return respondRedirect(`${listPath}?error=action`);
     }
 
-    const result = uncheckParent(listId, id);
+    const result = await uncheckParent(listId, id);
     if (!result) {
       return respondRedirect(`${listPath}?error=action`);
     }
@@ -228,7 +228,7 @@ export async function POST(request: Request) {
   }
 
   if (action === "resetCompleted") {
-    const result = resetCompletedItems(listId);
+    const result = await resetCompletedItems(listId);
     return respondRedirect(result ? listPath : `${listPath}?error=action`);
   }
 
@@ -240,21 +240,21 @@ export async function POST(request: Request) {
       return respondRedirect(`${listPath}?error=add`);
     }
 
-    if (parentId && !getNodeById(listId, parentId)) {
+    if (parentId && !(await getNodeById(listId, parentId))) {
       return respondRedirect(`${listPath}?error=add`);
     }
 
-    const result = createItem(listId, title, parentId);
+    const result = await createItem(listId, title, parentId);
     return respondRedirect(result ? listPath : `${listPath}?error=add`);
   }
 
   if (action === "deleteItem") {
     const id = readRequiredString(payload, "id");
-    if (!id || !getNodeById(listId, id)) {
+    if (!id || !(await getNodeById(listId, id))) {
       return respondRedirect(`${listPath}?error=delete`);
     }
 
-    const result = deleteItem(listId, id);
+    const result = await deleteItem(listId, id);
     return respondRedirect(result ? listPath : `${listPath}?error=delete`);
   }
 
@@ -262,11 +262,11 @@ export async function POST(request: Request) {
     const id = readRequiredString(payload, "id");
     const title = readRequiredString(payload, "title");
 
-    if (!id || !title || !getNodeById(listId, id)) {
+    if (!id || !title || !(await getNodeById(listId, id))) {
       return respondRedirect(`${listPath}?error=edit`);
     }
 
-    const result = updateItemTitle(listId, id, title);
+    const result = await updateItemTitle(listId, id, title);
     return respondRedirect(result ? listPath : `${listPath}?error=edit`);
   }
 
@@ -276,7 +276,7 @@ export async function POST(request: Request) {
       return respondRedirect(`${listPath}?error=listEdit`);
     }
 
-    const result = updateListTitle(listId, title);
+    const result = await updateListTitle(listId, title);
     return respondRedirect(result ? listPath : `${listPath}?error=listEdit`);
   }
 
@@ -284,14 +284,14 @@ export async function POST(request: Request) {
     const currentListId = readString(payload, "currentListId") ?? listId;
     const currentListPath = buildListPath(currentListId);
 
-    const deleted = deleteList(listId);
+    const deleted = await deleteList(listId);
     if (!deleted) {
       return respondRedirect(`${currentListPath}?error=listDelete`);
     }
 
     let redirectListId = currentListId;
-    if (listId === currentListId || !getListById(currentListId)) {
-      redirectListId = getDefaultListId() ?? createList("Sin nombre").id;
+    if (listId === currentListId || !(await getListById(currentListId))) {
+      redirectListId = (await getDefaultListId()) ?? (await createList("Sin nombre")).id;
     }
 
     return respondRedirect(buildListPath(redirectListId));

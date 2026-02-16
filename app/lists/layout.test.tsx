@@ -49,7 +49,7 @@ describe("Lists layout", () => {
   });
 
   test("renderiza sidebar con listas y contenido principal", async () => {
-    servicesMock.getListSummaries.mockReturnValue([
+    servicesMock.getListSummaries.mockResolvedValue([
       { id: "list-1", title: "Lista 1" },
       { id: "list-2", title: "Lista 2" },
     ]);
@@ -65,7 +65,7 @@ describe("Lists layout", () => {
   });
 
   test("usa sidebar cerrada por defecto cuando la cookie de estado está en false", async () => {
-    servicesMock.getListSummaries.mockReturnValue([{ id: "list-1", title: "Lista 1" }]);
+    servicesMock.getListSummaries.mockResolvedValue([{ id: "list-1", title: "Lista 1" }]);
     mockSidebarStateCookie("false");
 
     const view = await ListsLayout({

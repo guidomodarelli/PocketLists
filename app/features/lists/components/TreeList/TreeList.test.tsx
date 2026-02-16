@@ -3,15 +3,6 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 import type { VisibleNode } from "../../types";
 import TreeList from "./TreeList";
 
-jest.mock("../../actions", () => ({
-  confirmParentAction: jest.fn(),
-  confirmUncheckParentAction: jest.fn(),
-  createItemAction: jest.fn(),
-  deleteItemAction: jest.fn(),
-  editItemTitleAction: jest.fn(),
-  toggleItemAction: jest.fn(),
-}));
-
 jest.mock("../Link/Link", () => ({
   __esModule: true,
   default: ({ href, children, ...props }: { href: string; children: ReactNode }) => (
@@ -191,19 +182,19 @@ describe("TreeList", () => {
     expect(screen.getByText("Desmarcar ítem padre")).toBeInTheDocument();
   });
 
-  test("en nodos hoja envía form al cambiar checkbox", () => {
-    const requestSubmitSpy = jest.spyOn(HTMLFormElement.prototype, "requestSubmit");
+  test("en nodos hoja dispara callback de toggle al cambiar checkbox", () => {
+    const onToggleItem = jest.fn();
     const leaf = createNode({ id: "leaf", title: "Hoja", children: [] });
 
-    render(<TreeList nodes={[leaf]} mode="pending" listId="list-1" />);
+    render(<TreeList nodes={[leaf]} mode="pending" listId="list-1" onToggleItem={onToggleItem} />);
     fireEvent.click(screen.getByLabelText("Cambiar estado de Hoja"));
 
-    expect(requestSubmitSpy).toHaveBeenCalledTimes(1);
-    requestSubmitSpy.mockRestore();
+    expect(onToggleItem).toHaveBeenCalledTimes(1);
+    expect(onToggleItem).toHaveBeenCalledWith("list-1", "leaf", true);
   });
 
   test("en un hijo hoja dentro de un parent no abre modal de parent", () => {
-    const requestSubmitSpy = jest.spyOn(HTMLFormElement.prototype, "requestSubmit");
+    const onToggleItem = jest.fn();
     const tree = createNode({
       id: "parent",
       title: "Padre",
@@ -211,12 +202,12 @@ describe("TreeList", () => {
       children: [createNode({ id: "leaf-child", title: "Hoja hija", children: [] })],
     });
 
-    render(<TreeList nodes={[tree]} mode="pending" listId="list-1" />);
+    render(<TreeList nodes={[tree]} mode="pending" listId="list-1" onToggleItem={onToggleItem} />);
     fireEvent.click(screen.getByLabelText("Cambiar estado de Hoja hija"));
 
-    expect(requestSubmitSpy).toHaveBeenCalledTimes(1);
+    expect(onToggleItem).toHaveBeenCalledTimes(1);
+    expect(onToggleItem).toHaveBeenCalledWith("list-1", "leaf-child", true);
     expect(screen.queryByText("Completar ítem padre")).not.toBeInTheDocument();
-    requestSubmitSpy.mockRestore();
   });
 
   test("marca animación de completado cuando un ítem pasa a completado", () => {
@@ -281,11 +272,6 @@ describe("TreeList", () => {
     expect(input).toHaveFocus();
     expect(screen.getByRole("button", { name: "Guardar" })).toBeInTheDocument();
     expect(screen.getByDisplayValue("")).toBeInTheDocument();
-    expect(
-      screen
-        .getAllByDisplayValue("parent-add")
-        .some((element) => element.getAttribute("name") === "parentId")
-    ).toBe(true);
   });
 
   test("si pierde foco fuera del borrador de hijo, descarta el alta", async () => {

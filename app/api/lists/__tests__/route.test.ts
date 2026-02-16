@@ -40,9 +40,9 @@ describe("GET /api/lists", () => {
   });
 
   test("responde 200 con items cuando no hay query params", async () => {
-    getDefaultListIdMock.mockReturnValue("list-1");
-    getListSummariesMock.mockReturnValue([{ id: "list-1", title: "Lista 1" }]);
-    getListByIdMock.mockReturnValue({
+    getDefaultListIdMock.mockResolvedValue("list-1");
+    getListSummariesMock.mockResolvedValue([{ id: "list-1", title: "Lista 1" }]);
+    getListByIdMock.mockResolvedValue({
       id: "list-1",
       title: "Lista 1",
       items: [{ id: "1", title: "A", completed: false, children: [] }],
@@ -64,8 +64,8 @@ describe("GET /api/lists", () => {
   });
 
   test("responde 200 cuando se solicita una lista específica con listId", async () => {
-    getListSummariesMock.mockReturnValue([{ id: "list-2", title: "Lista 2" }]);
-    getListByIdMock.mockReturnValue({
+    getListSummariesMock.mockResolvedValue([{ id: "list-2", title: "Lista 2" }]);
+    getListByIdMock.mockResolvedValue({
       id: "list-2",
       title: "Lista 2",
       items: [{ id: "a", title: "Nodo", completed: false, children: [] }],
@@ -108,7 +108,7 @@ describe("GET /api/lists", () => {
   });
 
   test("responde 404 cuando la lista solicitada no existe", async () => {
-    getListByIdMock.mockReturnValue(undefined);
+    getListByIdMock.mockResolvedValue(undefined);
     const request = new Request("http://localhost:3000/api/lists?listId=missing");
     const response = await GET(request);
     const body = await response.json();
@@ -124,7 +124,7 @@ describe("POST /api/lists", () => {
   });
 
   test("crea una lista y devuelve redirect al nuevo recurso", async () => {
-    createListMock.mockReturnValue({ id: "list-new" });
+    createListMock.mockResolvedValue({ id: "list-new" });
     const request = new Request("http://localhost:3000/api/lists", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -140,12 +140,12 @@ describe("POST /api/lists", () => {
   });
 
   test("toggle item persiste cambio y redirige a la lista", async () => {
-    getNodeByIdMock.mockReturnValue({
+    getNodeByIdMock.mockResolvedValue({
       id: "node-1",
       completed: false,
       children: [],
     });
-    toggleItemMock.mockReturnValue(true);
+    toggleItemMock.mockResolvedValue(true);
     const request = new Request("http://localhost:3000/api/lists", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -164,7 +164,7 @@ describe("POST /api/lists", () => {
   });
 
   test("toggle item solicita confirmación para nodos con hijos", async () => {
-    getNodeByIdMock.mockReturnValue({
+    getNodeByIdMock.mockResolvedValue({
       id: "parent-1",
       completed: false,
       children: [{ id: "child-1" }],

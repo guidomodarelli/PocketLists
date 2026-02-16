@@ -4,7 +4,7 @@ type HomePageProps = Record<string, never>;
 
 export const getServerSideProps = (async (): Promise<GetServerSidePropsResult<HomePageProps>> => {
   const { createList, getDefaultListId } = await import("@/app/features/lists/services");
-  const defaultListId = getDefaultListId() ?? createList("Sin nombre").id;
+  const defaultListId = (await getDefaultListId()) ?? (await createList("Sin nombre")).id;
 
   return {
     redirect: {

@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import NextLink from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
-import { createListAction, deleteListAction, editListTitleAction } from "../../actions";
 import type { ListSummary } from "../../types";
 import {
   AlertDialog,
@@ -42,6 +41,9 @@ import styles from "./ListsSidebar.module.scss";
 
 type ListsSidebarProps = {
   lists: ListSummary[];
+  onCreateList?: () => Promise<unknown> | unknown;
+  onEditListTitle?: (listId: string, title: string) => Promise<unknown> | unknown;
+  onDeleteList?: (listId: string, currentListId: string) => Promise<unknown> | unknown;
 };
 
 const DOUBLE_CLICK_DELAY_MS = 250;
@@ -64,7 +66,12 @@ function getCurrentListId(pathname: string | null): string | null {
   return decodeURIComponent(pathSegments[2]);
 }
 
-export default function ListsSidebar({ lists }: ListsSidebarProps) {
+export default function ListsSidebar({
+  lists,
+  onCreateList = () => undefined,
+  onEditListTitle = () => undefined,
+  onDeleteList = () => undefined,
+}: ListsSidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const currentListId = getCurrentListId(pathname);
@@ -132,9 +139,7 @@ export default function ListsSidebar({ lists }: ListsSidebarProps) {
       return;
     }
 
-    const deleteFormId = `delete-list-${listPendingDeletion.id}`;
-    const form = document.getElementById(deleteFormId) as HTMLFormElement | null;
-    form?.requestSubmit();
+    void onDeleteList(listPendingDeletion.id, currentListId ?? listPendingDeletion.id);
     closeDeleteConfirmation();
   };
 
@@ -164,7 +169,13 @@ export default function ListsSidebar({ lists }: ListsSidebarProps) {
           <SidebarGroupLabel asChild>
             <div className={styles["lists-sidebar__group-header"]}>
               <span className={styles["lists-sidebar__group-title"]}>Listas</span>
-              <form action={createListAction} className={styles["lists-sidebar__new-list-form"]}>
+              <form
+                className={styles["lists-sidebar__new-list-form"]}
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void onCreateList();
+                }}
+              >
                 <Button type="submit" variant="ghost" size="xs" className={styles["lists-sidebar__new-list-button"]}>
                   <Plus className={styles["lists-sidebar__new-list-icon"]} />
                   <span className={styles["lists-sidebar__new-list-text"]}>Nueva lista</span>
@@ -180,7 +191,6 @@ export default function ListsSidebar({ lists }: ListsSidebarProps) {
                 const isEditing = editingListId === list.id;
                 const visibleListTitle = getVisibleListTitle(list.title);
                 const isPlaceholder = list.title.trim().length === 0;
-                const deleteFormId = `delete-list-${list.id}`;
 
                 return (
                   <SidebarMenuItem key={list.id}>
@@ -188,10 +198,13 @@ export default function ListsSidebar({ lists }: ListsSidebarProps) {
                       <SidebarMenuButton isActive={isActive} className={styles["lists-sidebar__item-button"]}>
                         <form
                           ref={editFormRef}
-                          action={editListTitleAction}
                           className={styles["lists-sidebar__edit-form"]}
+                          onSubmit={(event) => {
+                            event.preventDefault();
+                            setEditingListId(null);
+                            void onEditListTitle(list.id, draftTitle);
+                          }}
                         >
-                          <input type="hidden" name="listId" value={list.id} />
                           <input
                             ref={editInputRef}
                             name="title"
@@ -222,7 +235,6 @@ export default function ListsSidebar({ lists }: ListsSidebarProps) {
                                 return;
                               }
 
-                              setEditingListId(null);
                               editFormRef.current?.requestSubmit();
                             }}
                             autoFocus
@@ -304,10 +316,6 @@ export default function ListsSidebar({ lists }: ListsSidebarProps) {
                         </DropdownMenuContent>
                       </DropdownMenu>
                     ) : null}
-                    <form id={deleteFormId} action={deleteListAction} className={styles["lists-sidebar__delete-form"]}>
-                      <input type="hidden" name="listId" value={list.id} />
-                      <input type="hidden" name="currentListId" value={currentListId ?? list.id} />
-                    </form>
                   </SidebarMenuItem>
                 );
               })}

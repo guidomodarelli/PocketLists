@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { editListTitleAction } from "../../actions";
 import { cn } from "@/lib/utils";
 import styles from "./ListTitleEditable.module.scss";
 
@@ -9,9 +8,15 @@ type ListTitleEditableProps = {
   listId: string;
   title: string;
   className?: string;
+  onEditTitle?: (listId: string, title: string) => Promise<unknown> | unknown;
 };
 
-export default function ListTitleEditable({ listId, title, className }: ListTitleEditableProps) {
+export default function ListTitleEditable({
+  listId,
+  title,
+  className,
+  onEditTitle = () => undefined,
+}: ListTitleEditableProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [draftTitle, setDraftTitle] = useState(title);
   const formRef = useRef<HTMLFormElement | null>(null);
@@ -39,8 +44,21 @@ export default function ListTitleEditable({ listId, title, className }: ListTitl
   return (
     <h1 className={cn(styles["list-title-editable"], className)}>
       {isEditing ? (
-        <form ref={formRef} action={editListTitleAction} className={styles["list-title-editable__form"]}>
-          <input type="hidden" name="listId" value={listId} />
+        <form
+          ref={formRef}
+          className={styles["list-title-editable__form"]}
+          onSubmit={(event) => {
+            event.preventDefault();
+            const nextTitle = draftTitle.trim();
+            if (nextTitle === normalizedTitle) {
+              setDraftTitle(title);
+              setIsEditing(false);
+              return;
+            }
+            setIsEditing(false);
+            void onEditTitle(listId, draftTitle);
+          }}
+        >
           <input
             ref={inputRef}
             name="title"
@@ -71,7 +89,6 @@ export default function ListTitleEditable({ listId, title, className }: ListTitl
                 return;
               }
 
-              setIsEditing(false);
               formRef.current?.requestSubmit();
             }}
             autoFocus

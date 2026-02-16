@@ -3,17 +3,27 @@ import type { GetServerSidePropsContext } from "next";
 import type { ReactNode } from "react";
 import ListPage, { getServerSideProps } from "@/pages/lists/[listId]";
 import * as services from "@/app/features/lists/services";
+import { useListsQuery } from "@/app/features/lists/hooks/useListsQuery";
+import { useListsMutations } from "@/app/features/lists/hooks/useListsMutations";
 import type { List, ListSummary } from "@/app/features/lists/types";
+
+const pushMock = jest.fn();
+
+jest.mock("next/router", () => ({
+  useRouter: jest.fn(() => ({ push: pushMock })),
+}));
 
 jest.mock("@/app/features/lists/services", () => ({
   getListById: jest.fn(),
   getListSummaries: jest.fn(),
 }));
 
-jest.mock("@/app/features/lists/actions", () => ({
-  confirmParentAction: jest.fn(),
-  confirmUncheckParentAction: jest.fn(),
-  resetCompletedAction: jest.fn(),
+jest.mock("@/app/features/lists/hooks/useListsQuery", () => ({
+  useListsQuery: jest.fn(),
+}));
+
+jest.mock("@/app/features/lists/hooks/useListsMutations", () => ({
+  useListsMutations: jest.fn(),
 }));
 
 jest.mock("@/app/features/lists/components/ListsSidebar/ListsSidebar", () => ({
@@ -173,6 +183,8 @@ type ListPageProps = {
 };
 
 const servicesMock = jest.mocked(services);
+const useListsQueryMock = jest.mocked(useListsQuery);
+const useListsMutationsMock = jest.mocked(useListsMutations);
 
 function createContext({
   listId = "list-1",
@@ -208,11 +220,18 @@ function createPageProps(overrides: Partial<ListPageProps> = {}): ListPageProps 
 describe("List page (pages router)", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    pushMock.mockReset();
+    useListsQueryMock.mockImplementation((_listId, initialData) => ({ data: initialData }) as never);
+    useListsMutationsMock.mockReturnValue({
+      mutateAction: jest.fn(),
+      isMutating: false,
+      pendingAction: undefined,
+    } as never);
   });
 
   test("getServerSideProps obtiene datos de la lista y estado del sidebar", async () => {
-    servicesMock.getListSummaries.mockReturnValue([{ id: "list-1", title: "Lista 1" }]);
-    servicesMock.getListById.mockReturnValue({
+    servicesMock.getListSummaries.mockResolvedValue([{ id: "list-1", title: "Lista 1" }]);
+    servicesMock.getListById.mockResolvedValue({
       id: "list-1",
       title: "Lista 1",
       items: [],
@@ -236,8 +255,8 @@ describe("List page (pages router)", () => {
   });
 
   test("getServerSideProps devuelve error y sidebar cerrado cuando corresponde", async () => {
-    servicesMock.getListSummaries.mockReturnValue([{ id: "list-2", title: "Lista 2" }]);
-    servicesMock.getListById.mockReturnValue(undefined);
+    servicesMock.getListSummaries.mockResolvedValue([{ id: "list-2", title: "Lista 2" }]);
+    servicesMock.getListById.mockResolvedValue(undefined);
 
     const result = await getServerSideProps(
       createContext({

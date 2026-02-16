@@ -15,7 +15,7 @@ describe("Root page", () => {
   });
 
   test("redirige a la lista por defecto cuando existe", async () => {
-    servicesMock.getDefaultListId.mockReturnValue("list-default");
+    servicesMock.getDefaultListId.mockResolvedValue("list-default");
 
     const result = await getServerSideProps({} as GetServerSidePropsContext);
 
@@ -29,8 +29,8 @@ describe("Root page", () => {
   });
 
   test("crea una lista sin nombre cuando no hay listas y redirige", async () => {
-    servicesMock.getDefaultListId.mockReturnValue(undefined);
-    servicesMock.createList.mockReturnValue({ id: "list-new", title: "Sin nombre", items: [] });
+    servicesMock.getDefaultListId.mockResolvedValue(undefined);
+    servicesMock.createList.mockResolvedValue({ id: "list-new", title: "Sin nombre", items: [] });
 
     const result = await getServerSideProps({} as GetServerSidePropsContext);
 

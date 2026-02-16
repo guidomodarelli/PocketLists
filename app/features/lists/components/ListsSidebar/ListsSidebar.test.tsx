@@ -14,12 +14,6 @@ jest.mock("next/link", () => ({
   default: ({ href, children }: { href: string; children: ReactNode }) => <a href={href}>{children}</a>,
 }));
 
-jest.mock("../../actions", () => ({
-  createListAction: jest.fn(),
-  deleteListAction: jest.fn(),
-  editListTitleAction: jest.fn(),
-}));
-
 jest.mock("@/components/ui/dropdown-menu", () => ({
   DropdownMenu: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   DropdownMenuTrigger: ({ children }: { children: ReactNode }) => <>{children}</>,
@@ -293,7 +287,7 @@ describe("ListsSidebar", () => {
   });
 
   test("eliminar lista abre confirmación y recién envía al confirmar", () => {
-    const requestSubmitSpy = jest.spyOn(HTMLFormElement.prototype, "requestSubmit");
+    const onDeleteList = jest.fn();
 
     render(
       <ListsSidebar
@@ -301,22 +295,23 @@ describe("ListsSidebar", () => {
           { id: "list-1", title: "Lista 1" },
           { id: "list-2", title: "Lista 2" },
         ]}
+        onDeleteList={onDeleteList}
       />
     );
 
     fireEvent.click(screen.getByLabelText("Eliminar Lista 1"));
     expect(screen.getByText("¿Eliminar lista?")).toBeInTheDocument();
     expect(screen.getByText('Esta acción eliminará "Lista 1" de forma permanente.')).toBeInTheDocument();
-    expect(requestSubmitSpy).not.toHaveBeenCalled();
+    expect(onDeleteList).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
     expect(screen.queryByText("¿Eliminar lista?")).not.toBeInTheDocument();
-    expect(requestSubmitSpy).not.toHaveBeenCalled();
+    expect(onDeleteList).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByLabelText("Eliminar Lista 1"));
     fireEvent.click(screen.getByRole("button", { name: "Eliminar" }));
-    expect(requestSubmitSpy).toHaveBeenCalledTimes(1);
-    requestSubmitSpy.mockRestore();
+    expect(onDeleteList).toHaveBeenCalledTimes(1);
+    expect(onDeleteList).toHaveBeenCalledWith("list-1", "list-2");
   });
 
   test("cancela la edición con Esc y no guarda cambios", () => {
