@@ -232,7 +232,6 @@ export async function POST(request: Request) {
 
   if (action === "confirmUncheckParent") {
     const id = readRequiredString(payload, "id");
-    const reopenCompletedDialog = readBoolean(payload, "reopenCompletedDialog") === true;
 
     if (!id || !(await getNodeById(listId, id))) {
       return respondRedirect(`${listPath}?error=action`);
@@ -243,7 +242,7 @@ export async function POST(request: Request) {
       return respondRedirect(`${listPath}?error=action`);
     }
 
-    return respondRedirect(reopenCompletedDialog ? `${listPath}?openCompleted=true` : listPath);
+    return respondRedirect(listPath);
   }
 
   if (action === "resetCompleted") {

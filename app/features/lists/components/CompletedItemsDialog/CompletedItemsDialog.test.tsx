@@ -1,14 +1,6 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import type { MouseEvent, ReactNode } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type { VisibleNode } from "../../types";
 import CompletedItemsDialog from "./CompletedItemsDialog";
-
-jest.mock("next/navigation", () => ({
-  useRouter: jest.fn(),
-  usePathname: jest.fn(),
-  useSearchParams: jest.fn(),
-}));
 
 jest.mock("../TreeList/TreeList", () => ({
   __esModule: true,
@@ -18,36 +10,6 @@ jest.mock("../TreeList/TreeList", () => ({
     </div>
   ),
 }));
-
-jest.mock("../Link/Link", () => ({
-  __esModule: true,
-  default: ({
-    href,
-    children,
-    onClick,
-    ...props
-  }: {
-    href: string;
-    children: ReactNode;
-    onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
-  }) => (
-    <a
-      href={href}
-      onClick={(event) => {
-        event.preventDefault();
-        onClick?.(event);
-      }}
-      {...props}
-    >
-      {children}
-    </a>
-  ),
-}));
-
-const replaceMock = jest.fn();
-const useRouterMock = useRouter as jest.MockedFunction<typeof useRouter>;
-const usePathnameMock = usePathname as jest.MockedFunction<typeof usePathname>;
-const useSearchParamsMock = useSearchParams as jest.MockedFunction<typeof useSearchParams>;
 
 function createNode(overrides: Partial<VisibleNode> = {}): VisibleNode {
   return {
@@ -62,15 +24,6 @@ function createNode(overrides: Partial<VisibleNode> = {}): VisibleNode {
 }
 
 describe("CompletedItemsDialog", () => {
-  beforeEach(() => {
-    replaceMock.mockReset();
-    useRouterMock.mockReturnValue({ replace: replaceMock } as unknown as ReturnType<typeof useRouter>);
-    usePathnameMock.mockReturnValue("/lists/list-1");
-    useSearchParamsMock.mockReturnValue(
-      new URLSearchParams() as unknown as ReturnType<typeof useSearchParams>
-    );
-  });
-
   test("abre el dialog al clickear Ver completados y muestra contenido", () => {
     render(
       <CompletedItemsDialog
@@ -91,44 +44,7 @@ describe("CompletedItemsDialog", () => {
     expect(screen.getByTestId("completed-tree-list")).toHaveTextContent("list:list-1");
   });
 
-  test("abre el dialog automáticamente cuando se solicita desde query", () => {
-    render(
-      <CompletedItemsDialog
-        nodes={[createNode()]}
-        completedCount={1}
-        canResetCompleted
-        listId="list-1"
-        openOnLoad
-      />,
-    );
-
-    expect(screen.getByText("Completados")).toBeInTheDocument();
-    expect(screen.getByText("Tenés 1 ítems completados.")).toBeInTheDocument();
-  });
-
-  test("al cerrar limpia el query openCompleted para no reabrir por defecto", async () => {
-    useSearchParamsMock.mockReturnValue(
-      new URLSearchParams("openCompleted=true&foo=bar") as unknown as ReturnType<typeof useSearchParams>
-    );
-
-    render(
-      <CompletedItemsDialog
-        nodes={[createNode()]}
-        completedCount={1}
-        canResetCompleted
-        listId="list-1"
-        openOnLoad
-      />,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Close" }));
-
-    await waitFor(() => {
-      expect(replaceMock).toHaveBeenCalledWith("/lists/list-1?foo=bar", { scroll: false });
-    });
-  });
-
-  test("muestra link para desmarcar completados cuando corresponde", () => {
+  test("muestra botón para desmarcar completados cuando corresponde", () => {
     render(
       <CompletedItemsDialog
         nodes={[createNode()]}
@@ -139,31 +55,56 @@ describe("CompletedItemsDialog", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Ver completados" }));
-    expect(screen.getByRole("link", { name: "Desmarcar completados" })).toHaveAttribute(
-      "href",
-      "/lists/list-1?confirmReset=true",
-    );
+    expect(screen.getByRole("button", { name: "Desmarcar completados" })).toBeInTheDocument();
   });
 
-  test("mantiene abierto el dialog cuando se clickea Desmarcar completados", () => {
+  test("notifica callback al clickear Desmarcar completados", () => {
+    const onRequestResetCompleted = jest.fn();
+
     render(
       <CompletedItemsDialog
         nodes={[createNode()]}
         completedCount={1}
         canResetCompleted
         listId="list-1"
+        onRequestResetCompleted={onRequestResetCompleted}
       />,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Ver completados" }));
-    expect(screen.getByText("Completados")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Desmarcar completados" }));
 
-    fireEvent.click(screen.getByRole("link", { name: "Desmarcar completados" }));
-
+    expect(onRequestResetCompleted).toHaveBeenCalledTimes(1);
     expect(screen.getByText("Completados")).toBeInTheDocument();
   });
 
-  test("cierra el dialog cuando ya no hay ítems completados y permite volver a abrirlo", async () => {
+  test("permite controlar apertura y cierre desde el padre", () => {
+    const { rerender } = render(
+      <CompletedItemsDialog
+        nodes={[createNode()]}
+        completedCount={1}
+        canResetCompleted
+        listId="list-1"
+        open
+      />,
+    );
+
+    expect(screen.getByText("Completados")).toBeInTheDocument();
+
+    rerender(
+      <CompletedItemsDialog
+        nodes={[createNode()]}
+        completedCount={1}
+        canResetCompleted
+        listId="list-1"
+        open={false}
+      />,
+    );
+
+    expect(screen.queryByText("Completados")).not.toBeInTheDocument();
+  });
+
+  test("actualiza contenido cuando cambian los completados", () => {
     const { rerender } = render(
       <CompletedItemsDialog
         nodes={[createNode()]}
@@ -185,14 +126,9 @@ describe("CompletedItemsDialog", () => {
       />,
     );
 
-    await waitFor(() => {
-      expect(screen.queryByText("Completados")).not.toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: "Ver completados" }));
-
     expect(screen.getByText("Completados")).toBeInTheDocument();
     expect(screen.getByText("Tenés 0 ítems completados.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Desmarcar completados" })).not.toBeInTheDocument();
   });
 
   test("no muestra link para desmarcar completados cuando no corresponde", () => {
@@ -206,6 +142,6 @@ describe("CompletedItemsDialog", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Ver completados" }));
-    expect(screen.queryByRole("link", { name: "Desmarcar completados" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Desmarcar completados" })).not.toBeInTheDocument();
   });
 });

@@ -1,7 +1,6 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import Link from "../Link/Link";
+import { useState } from "react";
 import TreeList from "../TreeList/TreeList";
 import type { VisibleNode } from "../../types";
 import { Button } from "@/components/ui/button";
@@ -20,17 +19,15 @@ type CompletedItemsDialogProps = {
   completedCount: number;
   canResetCompleted: boolean;
   listId: string;
-  openOnLoad?: boolean;
   onToggleItem?: (listId: string, id: string, nextCompleted: boolean) => Promise<unknown> | unknown;
   onConfirmParent?: (listId: string, id: string) => Promise<unknown> | unknown;
-  onConfirmUncheckParent?: (
-    listId: string,
-    id: string,
-    reopenCompletedDialog: boolean
-  ) => Promise<unknown> | unknown;
+  onConfirmUncheckParent?: (listId: string, id: string) => Promise<unknown> | unknown;
   onCreateItem?: (listId: string, title: string, parentId?: string) => Promise<unknown> | unknown;
   onDeleteItem?: (listId: string, id: string) => Promise<unknown> | unknown;
   onEditItemTitle?: (listId: string, id: string, title: string) => Promise<unknown> | unknown;
+  onRequestResetCompleted?: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
 export default function CompletedItemsDialog({
@@ -38,37 +35,29 @@ export default function CompletedItemsDialog({
   completedCount,
   canResetCompleted,
   listId,
-  openOnLoad = false,
   onToggleItem = () => undefined,
   onConfirmParent = () => undefined,
   onConfirmUncheckParent = () => undefined,
   onCreateItem = () => undefined,
   onDeleteItem = () => undefined,
   onEditItemTitle = () => undefined,
+  onRequestResetCompleted = () => undefined,
+  open,
+  onOpenChange,
 }: CompletedItemsDialogProps) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const listPath = `/lists/${encodeURIComponent(listId)}`;
-  const dialogStateKey = [
-    canResetCompleted ? "with-completed-items" : "without-completed-items",
-    openOnLoad ? "open-on-load" : "manual-open",
-  ].join("-");
-  const handleOpenChange = (nextOpen: boolean) => {
-    if (nextOpen || !searchParams?.has("openCompleted")) {
-      return;
-    }
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = typeof open === "boolean";
+  const isOpen = isControlled ? open : internalOpen;
 
-    const nextSearchParams = new URLSearchParams(searchParams.toString());
-    nextSearchParams.delete("openCompleted");
-    const nextQuery = nextSearchParams.toString();
-    const nextPathname = pathname || listPath;
-    const nextHref = nextQuery.length > 0 ? `${nextPathname}?${nextQuery}` : nextPathname;
-    router.replace(nextHref, { scroll: false });
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!isControlled) {
+      setInternalOpen(nextOpen);
+    }
+    onOpenChange?.(nextOpen);
   };
 
   return (
-    <Dialog key={dialogStateKey} defaultOpen={openOnLoad} onOpenChange={handleOpenChange}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button type="button" variant="outline" className={styles["completed-items-dialog__trigger"]}>
           Ver completados
@@ -83,9 +72,14 @@ export default function CompletedItemsDialog({
         </DialogHeader>
         {canResetCompleted ? (
           <div className={styles["completed-items-dialog__actions"]}>
-            <Link href={`${listPath}?confirmReset=true`} className={styles["completed-items-dialog__reset-link"]}>
+            <Button
+              type="button"
+              variant="outline"
+              className={styles["completed-items-dialog__reset-link"]}
+              onClick={() => onRequestResetCompleted()}
+            >
               Desmarcar completados
-            </Link>
+            </Button>
           </div>
         ) : null}
         <div className={styles["completed-items-dialog__list"]}>

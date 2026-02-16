@@ -173,7 +173,7 @@ describe("actions", () => {
     expect(servicesMock.uncheckParent).toHaveBeenCalledWith("list-1", "parent");
   });
 
-  test("confirmUncheckParentAction: reabre completados cuando viene desde ese modal", async () => {
+  test("confirmUncheckParentAction: ignora reopenCompletedDialog y redirige a la lista", async () => {
     servicesMock.getNodeById.mockResolvedValue({
       id: "parent",
       title: "Parent",
@@ -186,8 +186,8 @@ describe("actions", () => {
       confirmUncheckParentAction(
         createFormData({ listId: "list-1", id: "parent", reopenCompletedDialog: "true" })
       )
-    ).rejects.toThrow("NEXT_REDIRECT:/lists/list-1?openCompleted=true");
-    expect(redirectMock).toHaveBeenCalledWith("/lists/list-1?openCompleted=true");
+    ).rejects.toThrow("NEXT_REDIRECT:/lists/list-1");
+    expect(redirectMock).toHaveBeenCalledWith("/lists/list-1");
   });
 
   test("resetCompletedAction: resetea y redirige", async () => {

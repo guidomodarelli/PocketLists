@@ -1,13 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import ResetCompletedDialog from "./ResetCompletedDialog";
 
-const replaceMock = jest.fn();
-
-jest.mock("next/navigation", () => ({
-  useRouter: () => ({
-    replace: replaceMock,
-  }),
-}));
+const onOpenChangeMock = jest.fn();
 
 jest.mock("@/components/ui/dialog", () => ({
   Dialog: ({
@@ -33,12 +27,12 @@ jest.mock("@/components/ui/dialog", () => ({
 
 describe("ResetCompletedDialog", () => {
   beforeEach(() => {
-    replaceMock.mockClear();
+    onOpenChangeMock.mockClear();
   });
 
   test("renderiza contenido cuando está abierto", () => {
     render(
-      <ResetCompletedDialog open dismissHref="/lists/list-1">
+      <ResetCompletedDialog open onOpenChange={onOpenChangeMock}>
         <div>Modal content</div>
       </ResetCompletedDialog>,
     );
@@ -47,27 +41,27 @@ describe("ResetCompletedDialog", () => {
     expect(screen.getByText("Modal content")).toBeInTheDocument();
   });
 
-  test("limpia query params al cerrar el modal", () => {
+  test("notifica close al cerrar el modal", () => {
     render(
-      <ResetCompletedDialog open dismissHref="/lists/list-1">
+      <ResetCompletedDialog open onOpenChange={onOpenChangeMock}>
         <div>Modal content</div>
       </ResetCompletedDialog>,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "close-dialog" }));
 
-    expect(replaceMock).toHaveBeenCalledWith("/lists/list-1", { scroll: false });
+    expect(onOpenChangeMock).toHaveBeenCalledWith(false);
   });
 
-  test("no navega cuando el modal sigue abierto", () => {
+  test("propaga cambios cuando el modal sigue abierto", () => {
     render(
-      <ResetCompletedDialog open dismissHref="/lists/list-1">
+      <ResetCompletedDialog open onOpenChange={onOpenChangeMock}>
         <div>Modal content</div>
       </ResetCompletedDialog>,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "keep-open" }));
 
-    expect(replaceMock).not.toHaveBeenCalled();
+    expect(onOpenChangeMock).toHaveBeenCalledWith(true);
   });
 });

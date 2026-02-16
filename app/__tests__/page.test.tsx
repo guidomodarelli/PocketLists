@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type { GetServerSidePropsContext } from "next";
 import type { ReactNode } from "react";
 import ListPage, { getServerSideProps } from "@/pages/lists/[listId]";
@@ -63,14 +63,24 @@ jest.mock("@/app/features/lists/components/CompletedItemsDialog/CompletedItemsDi
   default: ({
     completedCount,
     listId,
-    openOnLoad,
+    onRequestResetCompleted,
+    open,
+    onOpenChange,
   }: {
     completedCount: number;
     listId: string;
-    openOnLoad?: boolean;
+    onRequestResetCompleted?: () => void;
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
   }) => (
-    <div data-testid="completed-items-dialog" data-open-on-load={String(Boolean(openOnLoad))}>
+    <div data-testid="completed-items-dialog" data-open={String(open ?? false)}>
       completed:{completedCount} list:{listId}
+      <button type="button" onClick={() => onOpenChange?.(true)}>
+        open-completed-modal
+      </button>
+      <button type="button" onClick={onRequestResetCompleted}>
+        open-reset-modal
+      </button>
     </div>
   ),
 }));
@@ -88,18 +98,20 @@ jest.mock("@/app/features/lists/components/ResetCompletedDialog/ResetCompletedDi
   __esModule: true,
   default: ({
     open,
-    dismissHref,
+    onOpenChange,
     children,
   }: {
     open: boolean;
-    dismissHref: string;
+    onOpenChange?: (open: boolean) => void;
     children: ReactNode;
   }) => (
     <div
       data-testid="reset-completed-dialog"
       data-open={String(open)}
-      data-dismiss-href={dismissHref}
     >
+      <button type="button" onClick={() => onOpenChange?.(false)}>
+        close-reset-modal
+      </button>
       {open ? children : null}
     </div>
   ),
@@ -344,10 +356,9 @@ describe("List page (pages router)", () => {
     expect(screen.getByTestId("list-title-editable")).toHaveTextContent("title:Lista 1");
     expect(screen.getByTestId("tree-list-pending")).toBeInTheDocument();
     expect(screen.getByTestId("completed-items-dialog")).toHaveTextContent("completed:1");
-    expect(screen.getByTestId("completed-items-dialog")).toHaveAttribute("data-open-on-load", "false");
   });
 
-  test("propaga al modal de completados el flag de reapertura por query", () => {
+  test("ignora query openCompleted para la apertura del modal de completados", () => {
     render(
       <ListPage
         {...createPageProps({
@@ -361,10 +372,10 @@ describe("List page (pages router)", () => {
       />
     );
 
-    expect(screen.getByTestId("completed-items-dialog")).toHaveAttribute("data-open-on-load", "true");
+    expect(screen.getByTestId("completed-items-dialog")).toBeInTheDocument();
   });
 
-  test("muestra modal de confirmación reset cuando corresponde", () => {
+  test("muestra modal de confirmación reset al solicitarlo desde el cliente", () => {
     render(
       <ListPage
         {...createPageProps({
@@ -373,15 +384,63 @@ describe("List page (pages router)", () => {
             title: "Lista 1",
             items: [{ id: "completed-1", title: "Completado", completed: true, children: [] }],
           },
-          searchParams: { confirmReset: "true" },
         })}
       />
     );
 
+    expect(screen.queryByTestId("reset-completed-dialog")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "open-reset-modal" }));
+
     expect(screen.getByRole("heading", { name: "Desmarcar completados" })).toBeInTheDocument();
     expect(screen.getByText("Vas a desmarcar todos los ítems completados. ¿Querés continuar?")).toBeInTheDocument();
     expect(screen.getByTestId("reset-completed-dialog")).toHaveAttribute("data-open", "true");
-    expect(screen.getByTestId("reset-completed-dialog")).toHaveAttribute("data-dismiss-href", "/lists/list-1");
+  });
+
+  test("permite cerrar modal de confirmación reset en cliente", () => {
+    render(
+      <ListPage
+        {...createPageProps({
+          activeList: {
+            id: "list-1",
+            title: "Lista 1",
+            items: [{ id: "completed-1", title: "Completado", completed: true, children: [] }],
+          },
+        })}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "open-reset-modal" }));
+    expect(screen.getByTestId("reset-completed-dialog")).toHaveAttribute("data-open", "true");
+
+    fireEvent.click(screen.getByRole("button", { name: "close-reset-modal" }));
+    expect(screen.queryByTestId("reset-completed-dialog")).not.toBeInTheDocument();
+  });
+
+  test("solo cierra completados al confirmar desmarcado", () => {
+    render(
+      <ListPage
+        {...createPageProps({
+          activeList: {
+            id: "list-1",
+            title: "Lista 1",
+            items: [{ id: "completed-1", title: "Completado", completed: true, children: [] }],
+          },
+        })}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "open-completed-modal" }));
+    expect(screen.getByTestId("completed-items-dialog")).toHaveAttribute("data-open", "true");
+
+    fireEvent.click(screen.getByRole("button", { name: "open-reset-modal" }));
+    expect(screen.getByTestId("completed-items-dialog")).toHaveAttribute("data-open", "true");
+
+    fireEvent.click(screen.getByRole("button", { name: "close-reset-modal" }));
+    expect(screen.getByTestId("completed-items-dialog")).toHaveAttribute("data-open", "true");
+
+    fireEvent.click(screen.getByRole("button", { name: "open-reset-modal" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar y desmarcar" }));
+    expect(screen.getByTestId("completed-items-dialog")).toHaveAttribute("data-open", "false");
   });
 
   test("muestra banner cuando confirm apunta a un ítem inexistente", () => {

@@ -244,6 +244,8 @@ export default function ListPage({
   const runtimeListId = getRouteListId(router.query.listId) ?? listId;
   const listPath = `/lists/${encodeURIComponent(runtimeListId)}`;
   const [sidebarLists, setSidebarLists] = useState<ListSummary[]>(lists);
+  const [isCompletedDialogOpen, setIsCompletedDialogOpen] = useState(false);
+  const [isResetCompletedModalOpen, setIsResetCompletedModalOpen] = useState(false);
   const errorParam = getSingleParam(searchParams, "error");
   const actionError = resolveActionError(errorParam);
   const routeMatchesInitialProps = runtimeListId === listId;
@@ -294,11 +296,10 @@ export default function ListPage({
       listId: targetListId,
       id,
     });
-  const handleConfirmUncheckParent = (targetListId: string, id: string, reopenCompletedDialog: boolean) =>
+  const handleConfirmUncheckParent = (targetListId: string, id: string) =>
     mutateAction("confirmUncheckParent", {
       listId: targetListId,
       id,
-      reopenCompletedDialog,
     });
   const handleCreateItem = (targetListId: string, title: string, parentId?: string) =>
     mutateAction("createItem", {
@@ -383,9 +384,7 @@ export default function ListPage({
   const confirmUncheckId = getSingleParam(searchParams, "confirmUncheck");
   const nodeForUncheckConfirmation = confirmUncheckId ? findNode(items, confirmUncheckId) : undefined;
   const uncheckConfirmationMissing = Boolean(confirmUncheckId && !nodeForUncheckConfirmation);
-  const confirmReset = getSingleParam(searchParams, "confirmReset");
-  const openCompleted = getSingleParam(searchParams, "openCompleted");
-  const shouldConfirmReset = confirmReset === "true";
+  const shouldConfirmReset = isResetCompletedModalOpen;
 
   if (items.length === 0) {
     return (
@@ -461,7 +460,6 @@ export default function ListPage({
       !confirmId &&
       !showResetModal
   );
-  const shouldOpenCompletedDialog = openCompleted === "true" && !showResetModal && !showUncheckModal;
 
   return (
     <ListsPageLayout
@@ -511,7 +509,9 @@ export default function ListPage({
                 completedCount={completedCount}
                 canResetCompleted={canResetCompleted}
                 listId={runtimeListId}
-                openOnLoad={shouldOpenCompletedDialog}
+                open={isCompletedDialogOpen}
+                onOpenChange={setIsCompletedDialogOpen}
+                onRequestResetCompleted={() => setIsResetCompletedModalOpen(true)}
                 onToggleItem={handleToggleItem}
                 onConfirmParent={handleConfirmParent}
                 onConfirmUncheckParent={handleConfirmUncheckParent}
@@ -574,7 +574,10 @@ export default function ListPage({
         </main>
 
         {showResetModal ? (
-          <ResetCompletedDialog open={showResetModal} dismissHref={listPath}>
+          <ResetCompletedDialog
+            open={showResetModal}
+            onOpenChange={(nextOpen) => setIsResetCompletedModalOpen(nextOpen)}
+          >
             <DialogContent className={styles["home-page__modal-card"]}>
               <DialogHeader>
                 <DialogTitle className={styles["home-page__modal-title"]}>Desmarcar completados</DialogTitle>
@@ -586,6 +589,10 @@ export default function ListPage({
                 <Link
                   href={listPath}
                   className={styles["home-page__modal-link"]}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    setIsResetCompletedModalOpen(false);
+                  }}
                 >
                   Cancelar
                 </Link>
@@ -593,6 +600,8 @@ export default function ListPage({
                   type="button"
                   className={styles["home-page__modal-button"]}
                   onClick={() => {
+                    setIsResetCompletedModalOpen(false);
+                    setIsCompletedDialogOpen(false);
                     void handleResetCompleted(runtimeListId);
                   }}
                 >
@@ -624,7 +633,7 @@ export default function ListPage({
                   type="button"
                   className={styles["home-page__modal-button"]}
                   onClick={() => {
-                    void handleConfirmUncheckParent(runtimeListId, nodeForUncheckConfirmation.id, false);
+                    void handleConfirmUncheckParent(runtimeListId, nodeForUncheckConfirmation.id);
                   }}
                 >
                   Confirmar y desmarcar

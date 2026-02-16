@@ -37,11 +37,7 @@ type TreeListProps = {
   depth?: number;
   onToggleItem?: (listId: string, id: string, nextCompleted: boolean) => Promise<unknown> | unknown;
   onConfirmParent?: (listId: string, id: string) => Promise<unknown> | unknown;
-  onConfirmUncheckParent?: (
-    listId: string,
-    id: string,
-    reopenCompletedDialog: boolean
-  ) => Promise<unknown> | unknown;
+  onConfirmUncheckParent?: (listId: string, id: string) => Promise<unknown> | unknown;
   onCreateItem?: (listId: string, title: string, parentId?: string) => Promise<unknown> | unknown;
   onDeleteItem?: (listId: string, id: string) => Promise<unknown> | unknown;
   onEditItemTitle?: (listId: string, id: string, title: string) => Promise<unknown> | unknown;
@@ -769,11 +765,7 @@ export default function TreeList({
                   if (parentModalAction.intent === "complete") {
                     void onConfirmParent(listId, parentModalAction.id);
                   } else {
-                    void onConfirmUncheckParent(
-                      listId,
-                      parentModalAction.id,
-                      mode === "completed"
-                    );
+                    void onConfirmUncheckParent(listId, parentModalAction.id);
                   }
                   closeParentModal();
                 }}
