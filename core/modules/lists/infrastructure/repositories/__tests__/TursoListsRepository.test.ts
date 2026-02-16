@@ -5,12 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { sql } from "drizzle-orm";
 import { getTursoDb, resetTursoClientForTests } from "@/lib/db/client";
-import { listsStoreTable } from "@/lib/db/schema";
 import { TursoListsRepository } from "../TursoListsRepository";
-
-type GlobalStore = typeof globalThis & {
-  __pocketListsStore?: unknown;
-};
 
 const TEST_DB_PATH = join(tmpdir(), `pocket-lists-core-${process.pid}.db`);
 const TEST_DB_COMPANION_FILES = [`${TEST_DB_PATH}-wal`, `${TEST_DB_PATH}-shm`];
@@ -22,7 +17,6 @@ function removeFileIfExists(path: string) {
 }
 
 function resetDb() {
-  delete (globalThis as GlobalStore).__pocketListsStore;
   resetTursoClientForTests();
   removeFileIfExists(TEST_DB_PATH);
   TEST_DB_COMPANION_FILES.forEach(removeFileIfExists);
@@ -43,58 +37,41 @@ describe("TursoListsRepository", () => {
     expect(lists[0]?.id).toBe("list-travel");
   });
 
-  test("migrates lists_store JSON cuando no hay tablas relacionales pobladas", async () => {
+  test("preserva datos relacionales existentes y evita reseed inicial", async () => {
     const db = getTursoDb();
     if (!db) {
       throw new Error("Database should be available for migration test");
     }
 
     await db.run(sql`
-      CREATE TABLE IF NOT EXISTS lists_store (
+      CREATE TABLE IF NOT EXISTS lists (
         id TEXT PRIMARY KEY NOT NULL,
-        data TEXT NOT NULL,
+        title TEXT NOT NULL,
+        position INTEGER NOT NULL,
+        created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )
     `);
 
-    await db
-      .insert(listsStoreTable)
-      .values({
-        id: "lists-store",
-        data: JSON.stringify({
-          lists: [
-            {
-              id: "legacy-list",
-              title: "Legacy list",
-              items: [{ id: "legacy-item", title: "Legacy item", completed: false, children: [] }],
-            },
-          ],
-        }),
-        updatedAt: new Date().toISOString(),
-      })
-      .onConflictDoUpdate({
-        target: listsStoreTable.id,
-        set: {
-          data: JSON.stringify({
-            lists: [
-              {
-                id: "legacy-list",
-                title: "Legacy list",
-                items: [{ id: "legacy-item", title: "Legacy item", completed: false, children: [] }],
-              },
-            ],
-          }),
-          updatedAt: new Date().toISOString(),
-        },
-      });
+    const now = new Date().toISOString();
+    await db.run(sql`
+      INSERT INTO lists (id, title, position, created_at, updated_at)
+      VALUES (
+        'list-preloaded',
+        'Preloaded list',
+        0,
+        ${now},
+        ${now}
+      )
+    `);
 
     resetTursoClientForTests();
     const repository = new TursoListsRepository();
 
     const lists = await repository.getLists();
     expect(lists).toHaveLength(1);
-    expect(lists[0]?.id).toBe("legacy-list");
-    expect(lists[0]?.items[0]?.id).toBe("legacy-item");
+    expect(lists[0]?.id).toBe("list-preloaded");
+    expect(lists[0]?.title).toBe("Preloaded list");
   });
 
   test("saveListItems persiste cambios del árbol", async () => {

@@ -2,22 +2,12 @@ import { randomUUID } from "node:crypto";
 import { asc, eq, sql } from "drizzle-orm";
 import { getTursoDb } from "@/lib/db/client";
 import { INITIAL_LISTS } from "@/app/features/lists/data";
-import { itemsTable, listsStoreTable, listsTable } from "@/lib/db/schema";
+import { itemsTable, listsTable } from "@/lib/db/schema";
 import type { ItemNode } from "../../domain/entities/ItemNode";
 import type { List } from "../../domain/entities/List";
 import type { ListsRepository } from "../../domain/repositories/ListsRepository";
 import { normalizeTree } from "../../domain/services/tree";
 import { buildTreeFromRecords, flattenTreeToRecords, type ItemRecord } from "../mappers/listTreeMapper";
-
-type ListsStorePayload = {
-  lists: List[];
-};
-
-type LegacyStore = typeof globalThis & {
-  __pocketListsStore?: unknown;
-};
-
-const STORE_RECORD_ID = "lists-store";
 
 function buildInitialLists(): List[] {
   return INITIAL_LISTS.map((list) => ({
@@ -27,55 +17,12 @@ function buildInitialLists(): List[] {
   }));
 }
 
-function parseListsStorePayload(payload: string): List[] | null {
-  try {
-    const parsed = JSON.parse(payload) as unknown;
-    if (
-      !parsed ||
-      typeof parsed !== "object" ||
-      !("lists" in parsed) ||
-      !Array.isArray((parsed as { lists?: unknown }).lists)
-    ) {
-      return null;
-    }
-
-    return normalizeTreeLists((parsed as ListsStorePayload).lists);
-  } catch {
-    return null;
-  }
-}
-
 function normalizeTreeLists(lists: List[]): List[] {
   return lists.map((list) => ({
     id: list.id,
     title: list.title,
     items: normalizeTree(list.items ?? []),
   }));
-}
-
-function readLegacyInMemoryStore(): List[] | null {
-  const globalStore = globalThis as LegacyStore;
-  const store = globalStore.__pocketListsStore;
-  if (!store || typeof store !== "object") {
-    return null;
-  }
-
-  if ("lists" in store && Array.isArray((store as { lists?: unknown }).lists)) {
-    return normalizeTreeLists((store as ListsStorePayload).lists);
-  }
-
-  if ("items" in store && Array.isArray((store as { items?: unknown }).items)) {
-    const fallbackBaseList = INITIAL_LISTS[0];
-    return [
-      {
-        id: fallbackBaseList?.id ?? `list-${randomUUID()}`,
-        title: fallbackBaseList?.title ?? "Sin nombre",
-        items: normalizeTree((store as { items: ItemNode[] }).items),
-      },
-    ];
-  }
-
-  return null;
 }
 
 export class TursoListsRepository implements ListsRepository {
@@ -92,17 +39,6 @@ export class TursoListsRepository implements ListsRepository {
       throw new Error("Database no configurada. Definí TURSO_DATABASE_URL para operar con listas.");
     }
     return db;
-  }
-
-  private async ensureLegacyStoreTable(): Promise<void> {
-    const db = this.getDb();
-    await db.run(sql`
-      CREATE TABLE IF NOT EXISTS lists_store (
-        id TEXT PRIMARY KEY NOT NULL,
-        data TEXT NOT NULL,
-        updated_at TEXT NOT NULL
-      )
-    `);
   }
 
   private async ensureRelationalTables(): Promise<void> {
@@ -140,24 +76,6 @@ export class TursoListsRepository implements ListsRepository {
     const rows = await db.select({ count: sql<number>`count(*)` }).from(listsTable);
     const count = Number(rows[0]?.count ?? 0);
     return count > 0;
-  }
-
-  private async readListsFromStoreTable(): Promise<List[] | null> {
-    await this.ensureLegacyStoreTable();
-    const db = this.getDb();
-
-    const rows = await db
-      .select({ data: listsStoreTable.data })
-      .from(listsStoreTable)
-      .where(eq(listsStoreTable.id, STORE_RECORD_ID))
-      .limit(1);
-
-    const payload = rows[0]?.data;
-    if (!payload) {
-      return null;
-    }
-
-    return parseListsStorePayload(payload);
   }
 
   private async replaceAllLists(lists: List[]): Promise<void> {
@@ -200,20 +118,8 @@ export class TursoListsRepository implements ListsRepository {
     });
   }
 
-  private async bootstrapFromLegacyStores(): Promise<void> {
+  private async seedInitialListsIfEmpty(): Promise<void> {
     if (await this.hasRelationalData()) {
-      return;
-    }
-
-    const fromMemory = readLegacyInMemoryStore();
-    if (fromMemory && fromMemory.length > 0) {
-      await this.replaceAllLists(fromMemory);
-      return;
-    }
-
-    const fromStoreTable = await this.readListsFromStoreTable();
-    if (fromStoreTable && fromStoreTable.length > 0) {
-      await this.replaceAllLists(fromStoreTable);
       return;
     }
 
@@ -226,7 +132,7 @@ export class TursoListsRepository implements ListsRepository {
     }
 
     await this.ensureRelationalTables();
-    await this.bootstrapFromLegacyStores();
+    await this.seedInitialListsIfEmpty();
     this.initialized = true;
   }
 

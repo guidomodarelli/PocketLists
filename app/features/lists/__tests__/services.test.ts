@@ -4,33 +4,28 @@ import { existsSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { resetTursoClientForTests } from "@/lib/db/client";
-import {
-  completeParent,
-  createList,
-  createItem,
-  deleteList,
-  deleteItem,
-  getDefaultListId,
-  getListById,
-  getListSummaries,
-  getLists,
-  getNodeById,
-  resetCompletedItems,
-  toggleItem,
-  uncheckParent,
-  updateListTitle,
-  updateItemTitle,
-} from "../services";
-
-type GlobalStore = typeof globalThis & {
-  __pocketListsStore?: unknown;
-};
+import type * as ServicesModule from "../services";
 
 const TEST_TURSO_DB_PATH = join(tmpdir(), `pocket-lists-turso-${process.pid}.db`);
 const TEST_TURSO_DB_COMPANION_FILES = [`${TEST_TURSO_DB_PATH}-wal`, `${TEST_TURSO_DB_PATH}-shm`];
 process.env.TURSO_DATABASE_URL = `file:${TEST_TURSO_DB_PATH}`;
 delete process.env.TURSO_AUTH_TOKEN;
-delete process.env.POCKET_LISTS_STORE_PATH;
+
+let completeParent: typeof ServicesModule.completeParent;
+let createList: typeof ServicesModule.createList;
+let createItem: typeof ServicesModule.createItem;
+let deleteList: typeof ServicesModule.deleteList;
+let deleteItem: typeof ServicesModule.deleteItem;
+let getDefaultListId: typeof ServicesModule.getDefaultListId;
+let getListById: typeof ServicesModule.getListById;
+let getListSummaries: typeof ServicesModule.getListSummaries;
+let getLists: typeof ServicesModule.getLists;
+let getNodeById: typeof ServicesModule.getNodeById;
+let resetCompletedItems: typeof ServicesModule.resetCompletedItems;
+let toggleItem: typeof ServicesModule.toggleItem;
+let uncheckParent: typeof ServicesModule.uncheckParent;
+let updateListTitle: typeof ServicesModule.updateListTitle;
+let updateItemTitle: typeof ServicesModule.updateItemTitle;
 
 function removeFileIfExists(path: string) {
   if (!existsSync(path)) {
@@ -39,8 +34,7 @@ function removeFileIfExists(path: string) {
   unlinkSync(path);
 }
 
-function resetStore() {
-  delete (globalThis as GlobalStore).__pocketListsStore;
+function resetTestDb() {
   resetTursoClientForTests();
   removeFileIfExists(TEST_TURSO_DB_PATH);
   TEST_TURSO_DB_COMPANION_FILES.forEach(removeFileIfExists);
@@ -49,8 +43,26 @@ function resetStore() {
 const DEFAULT_LIST_ID = "list-travel";
 
 describe("services", () => {
-  beforeEach(() => {
-    resetStore();
+  beforeEach(async () => {
+    resetTestDb();
+    jest.resetModules();
+
+    const services = await import("../services");
+    completeParent = services.completeParent;
+    createList = services.createList;
+    createItem = services.createItem;
+    deleteList = services.deleteList;
+    deleteItem = services.deleteItem;
+    getDefaultListId = services.getDefaultListId;
+    getListById = services.getListById;
+    getListSummaries = services.getListSummaries;
+    getLists = services.getLists;
+    getNodeById = services.getNodeById;
+    resetCompletedItems = services.resetCompletedItems;
+    toggleItem = services.toggleItem;
+    uncheckParent = services.uncheckParent;
+    updateListTitle = services.updateListTitle;
+    updateItemTitle = services.updateItemTitle;
   });
 
   test("getLists inicializa y normaliza el árbol", async () => {
@@ -82,12 +94,11 @@ describe("services", () => {
     expect(summaries[0]?.id).toBe(created.id);
   });
 
-  test("preserva cambios al reiniciar store en memoria", async () => {
+  test("preserva cambios al reiniciar el cliente de base de datos", async () => {
     const created = await createItem(DEFAULT_LIST_ID, "Persisted item");
     expect(created).not.toBeNull();
     expect(existsSync(TEST_TURSO_DB_PATH)).toBe(true);
 
-    delete (globalThis as GlobalStore).__pocketListsStore;
     resetTursoClientForTests();
 
     const persistedNode = (await getLists())
@@ -128,20 +139,9 @@ describe("services", () => {
     expect((await getListById(DEFAULT_LIST_ID))?.title).toBe("");
   });
 
-  test("migra store legacy en memoria con shape { items: [...] }", async () => {
-    (globalThis as GlobalStore).__pocketListsStore = {
-      items: [
-        {
-          id: "legacy-root",
-          title: "Legacy",
-          completed: false,
-          children: [],
-        },
-      ],
-    };
-
+  test("usa únicamente datos relacionales por defecto", async () => {
     expect(await getDefaultListId()).toBe(DEFAULT_LIST_ID);
-    expect(await getNodeById(DEFAULT_LIST_ID, "legacy-root")).toBeDefined();
+    expect(await getNodeById(DEFAULT_LIST_ID, "unknown-root")).toBeUndefined();
   });
 
   test("getNodeById devuelve undefined para ids inexistentes", async () => {
