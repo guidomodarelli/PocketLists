@@ -17,11 +17,13 @@ import {
 } from "@/app/features/lists/services";
 import type { ApiError, ListsResponse } from "@/app/features/lists/types";
 
+type ListsScope = "full" | "active";
+
 function validateQueryParams(
   searchParams: URLSearchParams
-): { ok: true } | { ok: false; error: ApiError } {
+): { ok: true; scope: ListsScope } | { ok: false; error: ApiError } {
   const keys = Array.from(new Set(searchParams.keys()));
-  const unsupportedKeys = keys.filter((key) => key !== "listId");
+  const unsupportedKeys = keys.filter((key) => key !== "listId" && key !== "scope");
   if (unsupportedKeys.length > 0) {
     return {
       ok: false,
@@ -43,7 +45,18 @@ function validateQueryParams(
     };
   }
 
-  return { ok: true };
+  const scope = searchParams.get("scope");
+  if (scope !== null && scope !== "full" && scope !== "active") {
+    return {
+      ok: false,
+      error: {
+        error: "Parámetro inválido.",
+        details: 'El parámetro "scope" debe ser "full" o "active".',
+      },
+    };
+  }
+
+  return { ok: true, scope: scope === "active" ? "active" : "full" };
 }
 
 type ListsMutationAction =
@@ -129,9 +142,15 @@ export async function GET(request: Request) {
     );
   }
 
+  const activeOnlyResponse: Pick<ListsResponse, "activeList"> = { activeList };
+
+  if (validation.scope === "active") {
+    return NextResponse.json<Pick<ListsResponse, "activeList">>(activeOnlyResponse, { status: 200 });
+  }
+
   const response: ListsResponse = {
+    ...activeOnlyResponse,
     lists: await getListSummaries(),
-    activeList,
   };
 
   return NextResponse.json<ListsResponse>(response, { status: 200 });

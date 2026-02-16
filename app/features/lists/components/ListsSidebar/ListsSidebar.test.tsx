@@ -4,9 +4,11 @@ import ListsSidebar from "./ListsSidebar";
 
 const pushMock = jest.fn();
 
-jest.mock("next/navigation", () => ({
-  usePathname: jest.fn(() => "/lists/list-2"),
-  useRouter: jest.fn(() => ({ push: pushMock })),
+jest.mock("next/router", () => ({
+  useRouter: jest.fn(() => ({
+    asPath: "/lists/list-2",
+    push: pushMock,
+  })),
 }));
 
 jest.mock("next/link", () => ({
@@ -188,7 +190,7 @@ describe("ListsSidebar", () => {
       jest.advanceTimersByTime(300);
     });
 
-    expect(pushMock).toHaveBeenCalledWith("/lists/list-1");
+    expect(pushMock).toHaveBeenCalledWith("/lists/list-1", undefined, { shallow: true });
   });
 
   test("single click en placeholder navega a la lista", () => {
@@ -208,7 +210,7 @@ describe("ListsSidebar", () => {
       jest.advanceTimersByTime(300);
     });
 
-    expect(pushMock).toHaveBeenCalledWith("/lists/list-empty");
+    expect(pushMock).toHaveBeenCalledWith("/lists/list-empty", undefined, { shallow: true });
   });
 
   test("doble click abre edición inline y no navega", () => {

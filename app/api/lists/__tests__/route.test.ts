@@ -78,6 +78,29 @@ describe("GET /api/lists", () => {
     expect(getListByIdMock).toHaveBeenCalledWith("list-2");
   });
 
+  test("responde 200 con activeList cuando se solicita scope=active", async () => {
+    getListByIdMock.mockResolvedValue({
+      id: "list-2",
+      title: "Lista 2",
+      items: [{ id: "a", title: "Nodo", completed: false, children: [] }],
+    });
+
+    const request = new Request("http://localhost:3000/api/lists?listId=list-2&scope=active");
+    const response = await GET(request);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual({
+      activeList: {
+        id: "list-2",
+        title: "Lista 2",
+        items: [{ id: "a", title: "Nodo", completed: false, children: [] }],
+      },
+    });
+    expect(getListSummariesMock).not.toHaveBeenCalled();
+    expect(getListByIdMock).toHaveBeenCalledWith("list-2");
+  });
+
   test("responde 400 cuando recibe parámetros no soportados", async () => {
     const request = new Request("http://localhost:3000/api/lists?foo=1&bar=2");
     const response = await GET(request);
@@ -105,6 +128,16 @@ describe("GET /api/lists", () => {
 
     expect(response.status).toBe(400);
     expect(body.error).toBe("Parámetro inválido.");
+  });
+
+  test("responde 400 cuando scope es inválido", async () => {
+    const request = new Request("http://localhost:3000/api/lists?listId=list-1&scope=invalid");
+    const response = await GET(request);
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error).toBe("Parámetro inválido.");
+    expect(body.details).toBe('El parámetro "scope" debe ser "full" o "active".');
   });
 
   test("responde 404 cuando la lista solicitada no existe", async () => {

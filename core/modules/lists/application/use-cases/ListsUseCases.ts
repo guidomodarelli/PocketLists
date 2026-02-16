@@ -38,8 +38,7 @@ export function createListsUseCases(repository: ListsRepository): ListsUseCases 
   };
 
   const getListSummaries = async (): Promise<ListSummary[]> => {
-    const lists = await getLists();
-    return lists.map((list) => ({ id: list.id, title: list.title }));
+    return repository.getListSummaries();
   };
 
   const getDefaultListId = async (): Promise<string | undefined> => {

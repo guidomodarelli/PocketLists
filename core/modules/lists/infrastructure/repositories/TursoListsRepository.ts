@@ -4,7 +4,7 @@ import { getTursoDb } from "@/lib/db/client";
 import { INITIAL_LISTS } from "@/app/features/lists/data";
 import { itemsTable, listsTable } from "@/lib/db/schema";
 import type { ItemNode } from "../../domain/entities/ItemNode";
-import type { List } from "../../domain/entities/List";
+import type { List, ListSummary } from "../../domain/entities/List";
 import type { ListsRepository } from "../../domain/repositories/ListsRepository";
 import { normalizeTree } from "../../domain/services/tree";
 import { buildTreeFromRecords, flattenTreeToRecords, type ItemRecord } from "../mappers/listTreeMapper";
@@ -180,9 +180,71 @@ export class TursoListsRepository implements ListsRepository {
     }));
   }
 
+  async getListSummaries(): Promise<ListSummary[]> {
+    await this.initializationPromise;
+    const db = this.getDb();
+
+    const listRows = await db
+      .select({
+        id: listsTable.id,
+        title: listsTable.title,
+      })
+      .from(listsTable)
+      .orderBy(asc(listsTable.position));
+
+    return listRows.map((list) => ({
+      id: list.id,
+      title: list.title,
+    }));
+  }
+
   async getListById(listId: string): Promise<List | undefined> {
-    const lists = await this.getLists();
-    return lists.find((list) => list.id === listId);
+    await this.initializationPromise;
+    const db = this.getDb();
+
+    const listRows = await db
+      .select({
+        id: listsTable.id,
+        title: listsTable.title,
+      })
+      .from(listsTable)
+      .where(eq(listsTable.id, listId))
+      .limit(1);
+
+    const listRow = listRows[0];
+    if (!listRow) {
+      return undefined;
+    }
+
+    const itemRows = await db
+      .select({
+        id: itemsTable.id,
+        listId: itemsTable.listId,
+        parentId: itemsTable.parentId,
+        title: itemsTable.title,
+        completed: itemsTable.completed,
+        position: itemsTable.position,
+      })
+      .from(itemsTable)
+      .where(eq(itemsTable.listId, listId))
+      .orderBy(asc(itemsTable.position));
+
+    return {
+      id: listRow.id,
+      title: listRow.title,
+      items: normalizeTree(
+        buildTreeFromRecords(
+          itemRows.map((row) => ({
+            id: row.id,
+            listId: row.listId,
+            parentId: row.parentId,
+            title: row.title,
+            completed: row.completed,
+            position: row.position,
+          }))
+        )
+      ),
+    };
   }
 
   async createList(title: string): Promise<List> {

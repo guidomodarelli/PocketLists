@@ -74,6 +74,20 @@ describe("TursoListsRepository", () => {
     expect(lists[0]?.title).toBe("Preloaded list");
   });
 
+  test("getListSummaries consulta solo metadata de listas", async () => {
+    const repository = new TursoListsRepository();
+
+    const summaries = await repository.getListSummaries();
+
+    expect(summaries.length).toBeGreaterThan(0);
+    expect(summaries[0]).toEqual(
+      expect.objectContaining({
+        id: expect.any(String),
+        title: expect.any(String),
+      })
+    );
+  });
+
   test("saveListItems persiste cambios del árbol", async () => {
     const repository = new TursoListsRepository();
 

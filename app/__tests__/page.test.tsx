@@ -3,14 +3,14 @@ import type { GetServerSidePropsContext } from "next";
 import type { ReactNode } from "react";
 import ListPage, { getServerSideProps } from "@/pages/lists/[listId]";
 import * as services from "@/app/features/lists/services";
-import { useListsQuery } from "@/app/features/lists/hooks/useListsQuery";
+import { useActiveListQuery } from "@/app/features/lists/hooks/useListsQuery";
 import { useListsMutations } from "@/app/features/lists/hooks/useListsMutations";
 import type { List, ListSummary } from "@/app/features/lists/types";
 
 const pushMock = jest.fn();
 
 jest.mock("next/router", () => ({
-  useRouter: jest.fn(() => ({ push: pushMock })),
+  useRouter: jest.fn(() => ({ push: pushMock, query: {} })),
 }));
 
 jest.mock("@/app/features/lists/services", () => ({
@@ -19,7 +19,7 @@ jest.mock("@/app/features/lists/services", () => ({
 }));
 
 jest.mock("@/app/features/lists/hooks/useListsQuery", () => ({
-  useListsQuery: jest.fn(),
+  useActiveListQuery: jest.fn(),
 }));
 
 jest.mock("@/app/features/lists/hooks/useListsMutations", () => ({
@@ -183,7 +183,7 @@ type ListPageProps = {
 };
 
 const servicesMock = jest.mocked(services);
-const useListsQueryMock = jest.mocked(useListsQuery);
+const useActiveListQueryMock = jest.mocked(useActiveListQuery);
 const useListsMutationsMock = jest.mocked(useListsMutations);
 
 function createContext({
@@ -221,7 +221,14 @@ describe("List page (pages router)", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     pushMock.mockReset();
-    useListsQueryMock.mockImplementation((_listId, initialData) => ({ data: initialData }) as never);
+    useActiveListQueryMock.mockImplementation((_listId, options) => ({
+      data: options.initialActiveList
+        ? {
+            lists: options.listsFallback,
+            activeList: options.initialActiveList,
+          }
+        : undefined,
+    }) as never);
     useListsMutationsMock.mockReturnValue({
       mutateAction: jest.fn(),
       isMutating: false,

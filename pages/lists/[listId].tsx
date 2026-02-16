@@ -1,5 +1,5 @@
 import type { GetServerSideProps } from "next";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/router";
 import TreeList from "@/app/features/lists/components/TreeList/TreeList";
 import Link from "@/app/features/lists/components/Link/Link";
@@ -10,7 +10,7 @@ import ListsSidebar from "@/app/features/lists/components/ListsSidebar/ListsSide
 import ResetCompletedDialog from "@/app/features/lists/components/ResetCompletedDialog/ResetCompletedDialog";
 import type { List, ListSummary } from "@/app/features/lists/types";
 import { buildVisibleTree, countByStatus, findNode } from "@/app/features/lists/tree";
-import { useListsQuery } from "@/app/features/lists/hooks/useListsQuery";
+import { useActiveListQuery } from "@/app/features/lists/hooks/useListsQuery";
 import { useListsMutations } from "@/app/features/lists/hooks/useListsMutations";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -95,6 +95,19 @@ function getSingleParam(searchParams: SearchParams | undefined, key: string): st
     return value[0];
   }
   return value;
+}
+
+function getRouteListId(listIdParam: string | string[] | undefined): string | null {
+  const rawListId = Array.isArray(listIdParam) ? listIdParam[0] : listIdParam;
+  if (!rawListId || rawListId.trim().length === 0) {
+    return null;
+  }
+
+  try {
+    return decodeURIComponent(rawListId);
+  } catch {
+    return rawListId;
+  }
 }
 
 function resolveActionError(errorParam?: string): { title: string; description: string } | null {
@@ -227,23 +240,32 @@ export default function ListPage({
   searchParams,
 }: ListPageProps) {
   const router = useRouter();
-  const listPath = `/lists/${encodeURIComponent(listId)}`;
+  const runtimeListId = getRouteListId(router.query.listId) ?? listId;
+  const listPath = `/lists/${encodeURIComponent(runtimeListId)}`;
+  const [sidebarLists, setSidebarLists] = useState<ListSummary[]>(lists);
   const errorParam = getSingleParam(searchParams, "error");
   const actionError = resolveActionError(errorParam);
-  const { data: queryData } = useListsQuery(
-    listId,
-    activeList
-      ? {
-          lists,
-          activeList,
-        }
-      : undefined
-  );
-  const resolvedLists = queryData?.lists ?? lists;
-  const resolvedActiveList = queryData?.activeList ?? activeList;
-  const { mutateAction } = useListsMutations(listId, {
+  const routeMatchesInitialProps = runtimeListId === listId;
+  const { data: queryData, error: queryError } = useActiveListQuery(runtimeListId, {
+    initialActiveList: routeMatchesInitialProps ? activeList : undefined,
+    listsFallback: sidebarLists,
+  });
+
+  useEffect(() => {
+    setSidebarLists(lists);
+  }, [lists]);
+
+  useEffect(() => {
+    if (queryData?.lists) {
+      setSidebarLists(queryData.lists);
+    }
+  }, [queryData?.lists]);
+
+  const resolvedLists = queryData?.lists ?? sidebarLists;
+  const resolvedActiveList = queryData?.activeList ?? (routeMatchesInitialProps ? activeList : undefined);
+  const { mutateAction } = useListsMutations(runtimeListId, {
     onRedirect: (redirectTo, targetListId) => {
-      if (targetListId !== listId || isDifferentLocation(redirectTo)) {
+      if (targetListId !== runtimeListId || isDifferentLocation(redirectTo)) {
         void router.push(normalizeRedirectHref(redirectTo));
       }
     },
@@ -299,7 +321,7 @@ export default function ListPage({
       listId: targetListId,
     });
 
-  if (error || !resolvedActiveList) {
+  if (routeMatchesInitialProps && error) {
     return (
       <ListsPageLayout
         lists={resolvedLists}
@@ -312,6 +334,42 @@ export default function ListPage({
           <ErrorState
             title={error ?? "No se pudieron obtener las listas."}
             description={details ?? "Intentá recargar la página."}
+            listPath={listPath}
+          />
+        </PageShell>
+      </ListsPageLayout>
+    );
+  }
+
+  if (!resolvedActiveList) {
+    if (!queryError) {
+      return (
+        <ListsPageLayout
+          lists={resolvedLists}
+          defaultSidebarOpen={defaultSidebarOpen}
+          onCreateList={handleCreateList}
+          onEditListTitle={handleEditListTitle}
+          onDeleteList={handleDeleteList}
+        >
+          <PageShell>
+            <div className={styles["home-page__inline-state"]}>Cargando listas...</div>
+          </PageShell>
+        </ListsPageLayout>
+      );
+    }
+
+    return (
+      <ListsPageLayout
+        lists={resolvedLists}
+        defaultSidebarOpen={defaultSidebarOpen}
+        onCreateList={handleCreateList}
+        onEditListTitle={handleEditListTitle}
+        onDeleteList={handleDeleteList}
+      >
+        <PageShell>
+          <ErrorState
+            title="No se pudieron obtener las listas."
+            description={queryError.message}
             listPath={listPath}
           />
         </PageShell>
@@ -344,7 +402,7 @@ export default function ListPage({
             <div className={styles["home-page__title-row"]}>
               <SidebarTrigger className={styles["home-page__sidebar-trigger"]} />
               <ListTitleEditable
-                listId={listId}
+                listId={runtimeListId}
                 title={resolvedActiveList.title}
                 className={styles["home-page__title"]}
                 onEditTitle={handleEditListTitle}
@@ -370,12 +428,12 @@ export default function ListPage({
             >
               <div className={styles["home-page__list-header"]}>
                 <h2 className={styles["home-page__list-title"]}>Pendientes</h2>
-                <AddRootItemButton listId={listId} />
+                <AddRootItemButton listId={runtimeListId} />
               </div>
               <TreeList
                 nodes={[]}
                 mode="pending"
-                listId={listId}
+                listId={runtimeListId}
                 onToggleItem={handleToggleItem}
                 onConfirmParent={handleConfirmParent}
                 onConfirmUncheckParent={handleConfirmUncheckParent}
@@ -420,7 +478,7 @@ export default function ListPage({
             <div className={styles["home-page__title-row"]}>
               <SidebarTrigger className={styles["home-page__sidebar-trigger"]} />
               <ListTitleEditable
-                listId={listId}
+                listId={runtimeListId}
                 title={resolvedActiveList.title}
                 className={styles["home-page__title"]}
                 onEditTitle={handleEditListTitle}
@@ -453,7 +511,7 @@ export default function ListPage({
                 nodes={completedTree}
                 completedCount={completedCount}
                 canResetCompleted={canResetCompleted}
-                listId={listId}
+                listId={runtimeListId}
                 openOnLoad={shouldOpenCompletedDialog}
                 onToggleItem={handleToggleItem}
                 onConfirmParent={handleConfirmParent}
@@ -499,12 +557,12 @@ export default function ListPage({
             >
               <div className={styles["home-page__list-header"]}>
                 <h2 className={styles["home-page__list-title"]}>Pendientes</h2>
-                <AddRootItemButton listId={listId} />
+                <AddRootItemButton listId={runtimeListId} />
               </div>
               <TreeList
                 nodes={pendingTree}
                 mode="pending"
-                listId={listId}
+                listId={runtimeListId}
                 onToggleItem={handleToggleItem}
                 onConfirmParent={handleConfirmParent}
                 onConfirmUncheckParent={handleConfirmUncheckParent}
@@ -536,7 +594,7 @@ export default function ListPage({
                   type="button"
                   className={styles["home-page__modal-button"]}
                   onClick={() => {
-                    void handleResetCompleted(listId);
+                    void handleResetCompleted(runtimeListId);
                   }}
                 >
                   Confirmar y desmarcar
@@ -567,7 +625,7 @@ export default function ListPage({
                   type="button"
                   className={styles["home-page__modal-button"]}
                   onClick={() => {
-                    void handleConfirmUncheckParent(listId, nodeForUncheckConfirmation.id, false);
+                    void handleConfirmUncheckParent(runtimeListId, nodeForUncheckConfirmation.id, false);
                   }}
                 >
                   Confirmar y desmarcar
@@ -601,7 +659,7 @@ export default function ListPage({
                     styles["home-page__modal-button--confirm"],
                   )}
                   onClick={() => {
-                    void handleConfirmParent(listId, nodeForConfirmation.id);
+                    void handleConfirmParent(runtimeListId, nodeForConfirmation.id);
                   }}
                 >
                   Confirmar y completar todo

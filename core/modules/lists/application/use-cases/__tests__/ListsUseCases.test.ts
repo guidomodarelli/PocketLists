@@ -10,6 +10,10 @@ class InMemoryListsRepository implements ListsRepository {
     return this.lists;
   }
 
+  async getListSummaries(): Promise<Array<{ id: string; title: string }>> {
+    return this.lists.map((list) => ({ id: list.id, title: list.title }));
+  }
+
   async getListById(listId: string): Promise<List | undefined> {
     return this.lists.find((list) => list.id === listId);
   }

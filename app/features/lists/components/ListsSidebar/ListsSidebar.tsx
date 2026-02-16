@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import NextLink from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/router";
 import { MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
 import type { ListSummary } from "../../types";
 import {
@@ -73,7 +73,7 @@ export default function ListsSidebar({
   onDeleteList = () => undefined,
 }: ListsSidebarProps) {
   const router = useRouter();
-  const pathname = usePathname();
+  const pathname = typeof router.asPath === "string" ? router.asPath.split("?")[0] : null;
   const currentListId = getCurrentListId(pathname);
   const [editingListId, setEditingListId] = useState<string | null>(null);
   const [listPendingDeletion, setListPendingDeletion] = useState<ListSummary | null>(null);
@@ -258,7 +258,7 @@ export default function ListsSidebar({
                               clearPendingNavigation();
                               navigateTimeoutRef.current = setTimeout(() => {
                                 navigateTimeoutRef.current = null;
-                                router.push(href);
+                                void router.push(href, undefined, { shallow: true });
                               }, DOUBLE_CLICK_DELAY_MS);
                             }}
                             onDoubleClick={(event) => {
@@ -274,7 +274,7 @@ export default function ListsSidebar({
                               event.preventDefault();
                               event.stopPropagation();
                               clearPendingNavigation();
-                              router.push(href);
+                              void router.push(href, undefined, { shallow: true });
                             }}
                           >
                             {visibleListTitle}
