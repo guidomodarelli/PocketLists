@@ -98,8 +98,21 @@ async function runListsMutation(variables: ListsMutationVariables): Promise<List
 export function useListsMutations(listId: string, options: UseListsMutationsOptions = {}) {
   const queryClient = useQueryClient();
   const queryKey = listsQueryKey(listId);
+  const mutationKey = ["lists-mutation", listId] as const;
+
+  const hasConcurrentMutations = () => queryClient.isMutating({ mutationKey }) > 1;
+
+  const syncCanonicalData = async (targetListId: string) => {
+    try {
+      const canonicalData = await fetchLists(targetListId);
+      queryClient.setQueryData(listsQueryKey(targetListId), canonicalData);
+    } catch {
+      await queryClient.invalidateQueries({ queryKey: ["lists"] });
+    }
+  };
 
   const mutation = useMutation<ListsMutationResponse, Error, ListsMutationVariables, ListsMutationContext>({
+    mutationKey,
     mutationFn: runListsMutation,
     onMutate: async (variables) => {
       await queryClient.cancelQueries({ queryKey });
@@ -118,19 +131,19 @@ export function useListsMutations(listId: string, options: UseListsMutationsOpti
       }
       toast.error(error.message);
     },
-    onSuccess: async (result) => {
+    onSuccess: async (result, variables) => {
       const targetListId = getListIdFromRedirect(result.redirectTo) ?? listId;
-      try {
-        const canonicalData = await fetchLists(targetListId);
-        queryClient.setQueryData(listsQueryKey(targetListId), canonicalData);
-      } catch {
-        await queryClient.invalidateQueries({ queryKey: ["lists"] });
+
+      if (variables.action === "toggleItem") {
+        // Keep optimistic state without immediate canonical refetch to avoid visual flicker
+        // when the user toggles multiple items in quick succession.
+      } else if (!hasConcurrentMutations()) {
+        // When multiple mutations are in flight, syncing after each success can temporarily
+        // overwrite newer optimistic changes and cause UI flicker.
+        await syncCanonicalData(targetListId);
       }
 
       options.onRedirect?.(result.redirectTo, targetListId);
-    },
-    onSettled: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["lists"] });
     },
   });
 
