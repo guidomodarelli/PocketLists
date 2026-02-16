@@ -2,7 +2,6 @@ import type { ItemNode } from "../entities/ItemNode";
 import type { List } from "../entities/List";
 
 export interface ListsRepository {
-  initialize(): Promise<void>;
   getLists(): Promise<List[]>;
   getListById(listId: string): Promise<List | undefined>;
   createList(title: string): Promise<List>;

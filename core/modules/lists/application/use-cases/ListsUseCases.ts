@@ -10,46 +10,53 @@ import {
   updateNodeInTree,
 } from "../../domain/services/tree";
 
-export class ListsUseCases {
-  constructor(private readonly repository: ListsRepository) {}
+export type ListsUseCases = {
+  getLists(): Promise<List[]>;
+  getListById(listId: string): Promise<List | undefined>;
+  getListSummaries(): Promise<ListSummary[]>;
+  getDefaultListId(): Promise<string | undefined>;
+  createList(title?: string): Promise<List>;
+  deleteList(listId: string): Promise<boolean>;
+  updateListTitle(listId: string, title: string): Promise<List | null>;
+  getNodeById(listId: string, id: string): Promise<ItemNode | undefined>;
+  toggleItem(listId: string, id: string, nextCompleted: boolean): Promise<ItemNode[] | null>;
+  completeParent(listId: string, id: string): Promise<ItemNode[] | null>;
+  uncheckParent(listId: string, id: string): Promise<ItemNode[] | null>;
+  resetCompletedItems(listId: string): Promise<ItemNode[] | null>;
+  createItem(listId: string, title: string, parentId?: string): Promise<ItemNode[] | null>;
+  deleteItem(listId: string, id: string): Promise<ItemNode[] | null>;
+  updateItemTitle(listId: string, id: string, title: string): Promise<ItemNode[] | null>;
+};
 
-  private async ready(): Promise<void> {
-    await this.repository.initialize();
-  }
+export function createListsUseCases(repository: ListsRepository): ListsUseCases {
+  const getLists = async (): Promise<List[]> => {
+    return repository.getLists();
+  };
 
-  async getLists(): Promise<List[]> {
-    await this.ready();
-    return this.repository.getLists();
-  }
+  const getListById = async (listId: string): Promise<List | undefined> => {
+    return repository.getListById(listId);
+  };
 
-  async getListById(listId: string): Promise<List | undefined> {
-    await this.ready();
-    return this.repository.getListById(listId);
-  }
-
-  async getListSummaries(): Promise<ListSummary[]> {
-    const lists = await this.getLists();
+  const getListSummaries = async (): Promise<ListSummary[]> => {
+    const lists = await getLists();
     return lists.map((list) => ({ id: list.id, title: list.title }));
-  }
+  };
 
-  async getDefaultListId(): Promise<string | undefined> {
-    return (await this.getLists())[0]?.id;
-  }
+  const getDefaultListId = async (): Promise<string | undefined> => {
+    return (await getLists())[0]?.id;
+  };
 
-  async createList(title = "Sin nombre"): Promise<List> {
-    await this.ready();
-    return this.repository.createList(title);
-  }
+  const createList = async (title = "Sin nombre"): Promise<List> => {
+    return repository.createList(title);
+  };
 
-  async deleteList(listId: string): Promise<boolean> {
-    await this.ready();
-    return this.repository.deleteList(listId);
-  }
+  const deleteList = async (listId: string): Promise<boolean> => {
+    return repository.deleteList(listId);
+  };
 
-  async updateListTitle(listId: string, title: string): Promise<List | null> {
-    await this.ready();
+  const updateListTitle = async (listId: string, title: string): Promise<List | null> => {
     const normalizedTitle = title.trim();
-    const list = await this.repository.getListById(listId);
+    const list = await repository.getListById(listId);
     if (!list) {
       return null;
     }
@@ -58,20 +65,20 @@ export class ListsUseCases {
       return list;
     }
 
-    return this.repository.updateListTitle(listId, normalizedTitle);
-  }
+    return repository.updateListTitle(listId, normalizedTitle);
+  };
 
-  async getNodeById(listId: string, id: string): Promise<ItemNode | undefined> {
-    const list = await this.getListById(listId);
+  const getNodeById = async (listId: string, id: string): Promise<ItemNode | undefined> => {
+    const list = await getListById(listId);
     if (!list) {
       return undefined;
     }
 
     return findNode(list.items, id);
-  }
+  };
 
-  async toggleItem(listId: string, id: string, nextCompleted: boolean): Promise<ItemNode[] | null> {
-    const list = await this.getListById(listId);
+  const toggleItem = async (listId: string, id: string, nextCompleted: boolean): Promise<ItemNode[] | null> => {
+    const list = await getListById(listId);
     if (!list) {
       return null;
     }
@@ -83,41 +90,41 @@ export class ListsUseCases {
       return { ...node, completed: nextCompleted };
     });
 
-    return this.repository.saveListItems(listId, normalizeTree(updated));
-  }
+    return repository.saveListItems(listId, normalizeTree(updated));
+  };
 
-  async completeParent(listId: string, id: string): Promise<ItemNode[] | null> {
-    const list = await this.getListById(listId);
+  const completeParent = async (listId: string, id: string): Promise<ItemNode[] | null> => {
+    const list = await getListById(listId);
     if (!list) {
       return null;
     }
 
     const updated = updateNodeInTree(list.items, id, (node) => setSubtreeCompletion(node, true));
-    return this.repository.saveListItems(listId, normalizeTree(updated));
-  }
+    return repository.saveListItems(listId, normalizeTree(updated));
+  };
 
-  async uncheckParent(listId: string, id: string): Promise<ItemNode[] | null> {
-    const list = await this.getListById(listId);
+  const uncheckParent = async (listId: string, id: string): Promise<ItemNode[] | null> => {
+    const list = await getListById(listId);
     if (!list) {
       return null;
     }
 
     const updated = updateNodeInTree(list.items, id, (node) => setSubtreeCompletion(node, false));
-    return this.repository.saveListItems(listId, normalizeTree(updated));
-  }
+    return repository.saveListItems(listId, normalizeTree(updated));
+  };
 
-  async resetCompletedItems(listId: string): Promise<ItemNode[] | null> {
-    const list = await this.getListById(listId);
+  const resetCompletedItems = async (listId: string): Promise<ItemNode[] | null> => {
+    const list = await getListById(listId);
     if (!list) {
       return null;
     }
 
     const updated = list.items.map((item) => setSubtreeCompletion(item, false));
-    return this.repository.saveListItems(listId, normalizeTree(updated));
-  }
+    return repository.saveListItems(listId, normalizeTree(updated));
+  };
 
-  async createItem(listId: string, title: string, parentId?: string): Promise<ItemNode[] | null> {
-    const list = await this.getListById(listId);
+  const createItem = async (listId: string, title: string, parentId?: string): Promise<ItemNode[] | null> => {
+    const list = await getListById(listId);
     if (!list) {
       return null;
     }
@@ -130,7 +137,7 @@ export class ListsUseCases {
     };
 
     if (!parentId) {
-      return this.repository.saveListItems(listId, normalizeTree([newItem, ...list.items]));
+      return repository.saveListItems(listId, normalizeTree([newItem, ...list.items]));
     }
 
     const updated = updateNodeInTree(list.items, parentId, (node) => ({
@@ -142,11 +149,11 @@ export class ListsUseCases {
       return null;
     }
 
-    return this.repository.saveListItems(listId, normalizeTree(updated));
-  }
+    return repository.saveListItems(listId, normalizeTree(updated));
+  };
 
-  async deleteItem(listId: string, id: string): Promise<ItemNode[] | null> {
-    const list = await this.getListById(listId);
+  const deleteItem = async (listId: string, id: string): Promise<ItemNode[] | null> => {
+    const list = await getListById(listId);
     if (!list) {
       return null;
     }
@@ -156,11 +163,11 @@ export class ListsUseCases {
       return null;
     }
 
-    return this.repository.saveListItems(listId, normalizeTree(updated));
-  }
+    return repository.saveListItems(listId, normalizeTree(updated));
+  };
 
-  async updateItemTitle(listId: string, id: string, title: string): Promise<ItemNode[] | null> {
-    const list = await this.getListById(listId);
+  const updateItemTitle = async (listId: string, id: string, title: string): Promise<ItemNode[] | null> => {
+    const list = await getListById(listId);
     if (!list) {
       return null;
     }
@@ -174,6 +181,24 @@ export class ListsUseCases {
       return null;
     }
 
-    return this.repository.saveListItems(listId, normalizeTree(updated));
-  }
+    return repository.saveListItems(listId, normalizeTree(updated));
+  };
+
+  return {
+    getLists,
+    getListById,
+    getListSummaries,
+    getDefaultListId,
+    createList,
+    deleteList,
+    updateListTitle,
+    getNodeById,
+    toggleItem,
+    completeParent,
+    uncheckParent,
+    resetCompletedItems,
+    createItem,
+    deleteItem,
+    updateItemTitle,
+  };
 }

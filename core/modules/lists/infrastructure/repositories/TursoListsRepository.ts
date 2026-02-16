@@ -80,6 +80,11 @@ function readLegacyInMemoryStore(): List[] | null {
 
 export class TursoListsRepository implements ListsRepository {
   private initialized = false;
+  private readonly initializationPromise: Promise<void>;
+
+  constructor() {
+    this.initializationPromise = this.initializeOnce();
+  }
 
   private getDb() {
     const db = getTursoDb();
@@ -215,7 +220,7 @@ export class TursoListsRepository implements ListsRepository {
     await this.replaceAllLists(buildInitialLists());
   }
 
-  async initialize(): Promise<void> {
+  private async initializeOnce(): Promise<void> {
     if (this.initialized) {
       return;
     }
@@ -226,7 +231,7 @@ export class TursoListsRepository implements ListsRepository {
   }
 
   async getLists(): Promise<List[]> {
-    await this.initialize();
+    await this.initializationPromise;
     const db = this.getDb();
     const listRows = await db
       .select({
@@ -275,7 +280,7 @@ export class TursoListsRepository implements ListsRepository {
   }
 
   async createList(title: string): Promise<List> {
-    await this.initialize();
+    await this.initializationPromise;
     const db = this.getDb();
     const id = `list-${randomUUID()}`;
     const now = new Date().toISOString();
@@ -299,7 +304,7 @@ export class TursoListsRepository implements ListsRepository {
   }
 
   async deleteList(listId: string): Promise<boolean> {
-    await this.initialize();
+    await this.initializationPromise;
     const db = this.getDb();
     const existing = await db
       .select({ id: listsTable.id })
@@ -316,7 +321,7 @@ export class TursoListsRepository implements ListsRepository {
   }
 
   async updateListTitle(listId: string, title: string): Promise<List | null> {
-    await this.initialize();
+    await this.initializationPromise;
     const db = this.getDb();
     const existing = await db
       .select({ id: listsTable.id })
@@ -338,7 +343,7 @@ export class TursoListsRepository implements ListsRepository {
   }
 
   async saveListItems(listId: string, items: ItemNode[]): Promise<ItemNode[] | null> {
-    await this.initialize();
+    await this.initializationPromise;
     const db = this.getDb();
 
     const exists = await db

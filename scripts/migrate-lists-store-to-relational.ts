@@ -2,7 +2,6 @@ import { TursoListsRepository } from "@/core/modules/lists/infrastructure/reposi
 
 async function run() {
   const repository = new TursoListsRepository();
-  await repository.initialize();
   const lists = await repository.getLists();
   console.log(`[migration] Relational lists ready. Total lists: ${lists.length}`);
 }

@@ -1,8 +1,7 @@
-import { ListsUseCases } from "@/core/modules/lists/application/use-cases/ListsUseCases";
-import { TursoListsRepository } from "@/core/modules/lists/infrastructure/repositories/TursoListsRepository";
+import { getCoreSetup } from "@/core/setup";
+import type { ListsUseCases } from "@/core/modules/lists/application/use-cases/ListsUseCases";
 
 export async function getListsUseCases(): Promise<ListsUseCases> {
-  const repository = new TursoListsRepository();
-  await repository.initialize();
-  return new ListsUseCases(repository);
+  const setup = await getCoreSetup();
+  return setup.lists;
 }

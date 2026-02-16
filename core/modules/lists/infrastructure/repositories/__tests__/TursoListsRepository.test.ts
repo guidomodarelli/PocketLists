@@ -35,9 +35,8 @@ describe("TursoListsRepository", () => {
     resetDb();
   });
 
-  test("initialize crea esquema relacional y seed inicial", async () => {
+  test("constructor bootstrap crea esquema relacional y seed inicial", async () => {
     const repository = new TursoListsRepository();
-    await repository.initialize();
 
     const lists = await repository.getLists();
     expect(lists.length).toBeGreaterThan(0);
@@ -91,7 +90,6 @@ describe("TursoListsRepository", () => {
 
     resetTursoClientForTests();
     const repository = new TursoListsRepository();
-    await repository.initialize();
 
     const lists = await repository.getLists();
     expect(lists).toHaveLength(1);
@@ -101,7 +99,6 @@ describe("TursoListsRepository", () => {
 
   test("saveListItems persiste cambios del árbol", async () => {
     const repository = new TursoListsRepository();
-    await repository.initialize();
 
     const list = await repository.getListById("list-travel");
     expect(list).toBeDefined();
