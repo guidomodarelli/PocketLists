@@ -27,6 +27,13 @@ type UseListsMutationsOptions = {
   onRedirect?: (redirectTo: string, targetListId: string) => void;
 };
 
+const ACTIONS_WITH_OPTIMISTIC_ONLY_SYNC: ReadonlySet<ListsMutationAction> = new Set([
+  "toggleItem",
+  "confirmParent",
+  "confirmUncheckParent",
+  "resetCompleted",
+]);
+
 const ACTION_ERROR_MESSAGES: Record<string, string> = {
   action: "No pudimos completar la acción. Revertimos los cambios.",
   add: "No pudimos agregar el ítem. Revertimos los cambios.",
@@ -134,9 +141,8 @@ export function useListsMutations(listId: string, options: UseListsMutationsOpti
     onSuccess: async (result, variables) => {
       const targetListId = getListIdFromRedirect(result.redirectTo) ?? listId;
 
-      if (variables.action === "toggleItem") {
-        // Keep optimistic state without immediate canonical refetch to avoid visual flicker
-        // when the user toggles multiple items in quick succession.
+      if (ACTIONS_WITH_OPTIMISTIC_ONLY_SYNC.has(variables.action)) {
+        // Keep optimistic state without immediate canonical refetch for completion actions.
       } else if (!hasConcurrentMutations()) {
         // When multiple mutations are in flight, syncing after each success can temporarily
         // overwrite newer optimistic changes and cause UI flicker.

@@ -80,6 +80,8 @@ type ListsMutationResponse = {
   redirectTo: string;
 };
 
+const listMutationQueues = new Map<string, Promise<unknown>>();
+
 function buildListPath(listId: string): string {
   return `/lists/${encodeURIComponent(listId)}`;
 }
@@ -110,6 +112,20 @@ function readBoolean(payload: Record<string, unknown> | undefined, key: string):
 
 function respondRedirect(redirectTo: string): NextResponse<ListsMutationResponse> {
   return NextResponse.json<ListsMutationResponse>({ redirectTo }, { status: 200 });
+}
+
+function enqueueListMutation<T>(listId: string, task: () => Promise<T>): Promise<T> {
+  const previous = listMutationQueues.get(listId) ?? Promise.resolve();
+  const queuedTask = previous.catch(() => undefined).then(task);
+
+  const trackedTask = queuedTask.finally(() => {
+    if (listMutationQueues.get(listId) === trackedTask) {
+      listMutationQueues.delete(listId);
+    }
+  });
+
+  listMutationQueues.set(listId, trackedTask);
+  return queuedTask;
 }
 
 export async function GET(request: Request) {
@@ -199,127 +215,129 @@ export async function POST(request: Request) {
 
   const listPath = buildListPath(listId);
 
-  if (action === "toggleItem") {
-    const id = readRequiredString(payload, "id");
-    const nextCompleted = readBoolean(payload, "nextCompleted");
+  return enqueueListMutation(listId, async () => {
+    if (action === "toggleItem") {
+      const id = readRequiredString(payload, "id");
+      const nextCompleted = readBoolean(payload, "nextCompleted");
 
-    if (!id || nextCompleted === null) {
-      return respondRedirect(`${listPath}?error=action`);
+      if (!id || nextCompleted === null) {
+        return respondRedirect(`${listPath}?error=action`);
+      }
+
+      const currentNode = await getNodeById(listId, id);
+      if (!currentNode) {
+        return respondRedirect(`${listPath}?error=action`);
+      }
+
+      if (nextCompleted && currentNode.children.length > 0 && !currentNode.completed) {
+        return respondRedirect(`${listPath}?confirm=${encodeURIComponent(id)}`);
+      }
+
+      const result = await toggleItem(listId, id, nextCompleted);
+      return respondRedirect(result ? listPath : `${listPath}?error=action`);
     }
 
-    const currentNode = await getNodeById(listId, id);
-    if (!currentNode) {
-      return respondRedirect(`${listPath}?error=action`);
+    if (action === "confirmParent") {
+      const id = readRequiredString(payload, "id");
+      if (!id || !(await getNodeById(listId, id))) {
+        return respondRedirect(`${listPath}?error=action`);
+      }
+
+      const result = await completeParent(listId, id);
+      return respondRedirect(result ? listPath : `${listPath}?error=action`);
     }
 
-    if (nextCompleted && currentNode.children.length > 0 && !currentNode.completed) {
-      return respondRedirect(`${listPath}?confirm=${encodeURIComponent(id)}`);
+    if (action === "confirmUncheckParent") {
+      const id = readRequiredString(payload, "id");
+
+      if (!id || !(await getNodeById(listId, id))) {
+        return respondRedirect(`${listPath}?error=action`);
+      }
+
+      const result = await uncheckParent(listId, id);
+      if (!result) {
+        return respondRedirect(`${listPath}?error=action`);
+      }
+
+      return respondRedirect(listPath);
     }
 
-    const result = await toggleItem(listId, id, nextCompleted);
-    return respondRedirect(result ? listPath : `${listPath}?error=action`);
-  }
-
-  if (action === "confirmParent") {
-    const id = readRequiredString(payload, "id");
-    if (!id || !(await getNodeById(listId, id))) {
-      return respondRedirect(`${listPath}?error=action`);
+    if (action === "resetCompleted") {
+      const result = await resetCompletedItems(listId);
+      return respondRedirect(result ? listPath : `${listPath}?error=action`);
     }
 
-    const result = await completeParent(listId, id);
-    return respondRedirect(result ? listPath : `${listPath}?error=action`);
-  }
+    if (action === "createItem") {
+      const title = readRequiredString(payload, "title");
+      const parentId = readString(payload, "parentId");
 
-  if (action === "confirmUncheckParent") {
-    const id = readRequiredString(payload, "id");
+      if (!title) {
+        return respondRedirect(`${listPath}?error=add`);
+      }
 
-    if (!id || !(await getNodeById(listId, id))) {
-      return respondRedirect(`${listPath}?error=action`);
+      if (parentId && !(await getNodeById(listId, parentId))) {
+        return respondRedirect(`${listPath}?error=add`);
+      }
+
+      const result = await createItem(listId, title, parentId);
+      return respondRedirect(result ? listPath : `${listPath}?error=add`);
     }
 
-    const result = await uncheckParent(listId, id);
-    if (!result) {
-      return respondRedirect(`${listPath}?error=action`);
+    if (action === "deleteItem") {
+      const id = readRequiredString(payload, "id");
+      if (!id || !(await getNodeById(listId, id))) {
+        return respondRedirect(`${listPath}?error=delete`);
+      }
+
+      const result = await deleteItem(listId, id);
+      return respondRedirect(result ? listPath : `${listPath}?error=delete`);
     }
 
-    return respondRedirect(listPath);
-  }
+    if (action === "editItemTitle") {
+      const id = readRequiredString(payload, "id");
+      const title = readRequiredString(payload, "title");
 
-  if (action === "resetCompleted") {
-    const result = await resetCompletedItems(listId);
-    return respondRedirect(result ? listPath : `${listPath}?error=action`);
-  }
+      if (!id || !title || !(await getNodeById(listId, id))) {
+        return respondRedirect(`${listPath}?error=edit`);
+      }
 
-  if (action === "createItem") {
-    const title = readRequiredString(payload, "title");
-    const parentId = readString(payload, "parentId");
-
-    if (!title) {
-      return respondRedirect(`${listPath}?error=add`);
+      const result = await updateItemTitle(listId, id, title);
+      return respondRedirect(result ? listPath : `${listPath}?error=edit`);
     }
 
-    if (parentId && !(await getNodeById(listId, parentId))) {
-      return respondRedirect(`${listPath}?error=add`);
+    if (action === "editListTitle") {
+      const title = readString(payload, "title");
+      if (title === undefined) {
+        return respondRedirect(`${listPath}?error=listEdit`);
+      }
+
+      const result = await updateListTitle(listId, title);
+      return respondRedirect(result ? listPath : `${listPath}?error=listEdit`);
     }
 
-    const result = await createItem(listId, title, parentId);
-    return respondRedirect(result ? listPath : `${listPath}?error=add`);
-  }
+    if (action === "deleteList") {
+      const currentListId = readString(payload, "currentListId") ?? listId;
+      const currentListPath = buildListPath(currentListId);
 
-  if (action === "deleteItem") {
-    const id = readRequiredString(payload, "id");
-    if (!id || !(await getNodeById(listId, id))) {
-      return respondRedirect(`${listPath}?error=delete`);
+      const deleted = await deleteList(listId);
+      if (!deleted) {
+        return respondRedirect(`${currentListPath}?error=listDelete`);
+      }
+
+      let redirectListId = currentListId;
+      if (listId === currentListId || !(await getListById(currentListId))) {
+        redirectListId = (await getDefaultListId()) ?? (await createList("Sin nombre")).id;
+      }
+
+      return respondRedirect(buildListPath(redirectListId));
     }
 
-    const result = await deleteItem(listId, id);
-    return respondRedirect(result ? listPath : `${listPath}?error=delete`);
-  }
-
-  if (action === "editItemTitle") {
-    const id = readRequiredString(payload, "id");
-    const title = readRequiredString(payload, "title");
-
-    if (!id || !title || !(await getNodeById(listId, id))) {
-      return respondRedirect(`${listPath}?error=edit`);
-    }
-
-    const result = await updateItemTitle(listId, id, title);
-    return respondRedirect(result ? listPath : `${listPath}?error=edit`);
-  }
-
-  if (action === "editListTitle") {
-    const title = readString(payload, "title");
-    if (title === undefined) {
-      return respondRedirect(`${listPath}?error=listEdit`);
-    }
-
-    const result = await updateListTitle(listId, title);
-    return respondRedirect(result ? listPath : `${listPath}?error=listEdit`);
-  }
-
-  if (action === "deleteList") {
-    const currentListId = readString(payload, "currentListId") ?? listId;
-    const currentListPath = buildListPath(currentListId);
-
-    const deleted = await deleteList(listId);
-    if (!deleted) {
-      return respondRedirect(`${currentListPath}?error=listDelete`);
-    }
-
-    let redirectListId = currentListId;
-    if (listId === currentListId || !(await getListById(currentListId))) {
-      redirectListId = (await getDefaultListId()) ?? (await createList("Sin nombre")).id;
-    }
-
-    return respondRedirect(buildListPath(redirectListId));
-  }
-
-  return NextResponse.json<ApiError>(
-    {
-      error: "Acción no soportada.",
-      details: "Usá una acción válida para operar sobre listas.",
-    },
-    { status: 400 }
-  );
+    return NextResponse.json<ApiError>(
+      {
+        error: "Acción no soportada.",
+        details: "Usá una acción válida para operar sobre listas.",
+      },
+      { status: 400 }
+    );
+  });
 }

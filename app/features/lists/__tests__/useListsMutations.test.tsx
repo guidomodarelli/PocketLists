@@ -240,4 +240,31 @@ describe("useListsMutations", () => {
 
     expect(global.fetch).toHaveBeenCalledTimes(2);
   });
+
+  test("omite fetch canónico en confirmParent", async () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(listsQueryKey("list-1"), createListsResponse());
+
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: async () => ({ redirectTo: "/lists/list-1" }),
+      } as Response)
+    ) as typeof fetch;
+
+    const { result } = renderHook(() => useListsMutations("list-1"), { wrapper });
+
+    await act(async () => {
+      await result.current.mutateAction("confirmParent", {
+        listId: "list-1",
+        id: "item-1",
+      });
+    });
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
 });

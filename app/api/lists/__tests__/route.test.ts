@@ -218,4 +218,61 @@ describe("POST /api/lists", () => {
     expect(toggleItemMock).not.toHaveBeenCalled();
     expect(body).toEqual({ redirectTo: "/lists/list-1?confirm=parent-1" });
   });
+
+  test("serializa mutaciones por lista para no perder la última acción", async () => {
+    let resolveFirstToggle: ((value: boolean) => void) | null = null;
+    let notifyFirstToggleStarted: (() => void) | null = null;
+    const firstToggleStarted = new Promise<void>((resolve) => {
+      notifyFirstToggleStarted = resolve;
+    });
+    getNodeByIdMock.mockResolvedValue({
+      id: "node-1",
+      completed: false,
+      children: [],
+    });
+    toggleItemMock
+      .mockImplementationOnce(
+        () => {
+          notifyFirstToggleStarted?.();
+          return (
+          new Promise<boolean>((resolve) => {
+            resolveFirstToggle = resolve;
+          })
+          );
+        }
+      )
+      .mockResolvedValueOnce(true);
+
+    const firstRequest = new Request("http://localhost:3000/api/lists", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        action: "toggleItem",
+        payload: { listId: "list-1", id: "node-1", nextCompleted: "true" },
+      }),
+    });
+
+    const secondRequest = new Request("http://localhost:3000/api/lists", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        action: "toggleItem",
+        payload: { listId: "list-1", id: "node-2", nextCompleted: "true" },
+      }),
+    });
+
+    const firstPromise = POST(firstRequest);
+    const secondPromise = POST(secondRequest);
+
+    await firstToggleStarted;
+    expect(toggleItemMock).toHaveBeenCalledTimes(1);
+
+    resolveFirstToggle?.(true);
+
+    const [firstResponse, secondResponse] = await Promise.all([firstPromise, secondPromise]);
+
+    expect(firstResponse.status).toBe(200);
+    expect(secondResponse.status).toBe(200);
+    expect(toggleItemMock).toHaveBeenCalledTimes(2);
+  });
 });
