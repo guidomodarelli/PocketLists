@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { GetServerSidePropsContext } from "next";
-import type { ReactNode } from "react";
+import React, { type ReactNode } from "react";
 import ListPage, { getServerSideProps } from "@/pages/lists/[listId]";
 import * as services from "@/app/features/lists/services";
 import { useActiveListQuery } from "@/app/features/lists/hooks/useListsQuery";
@@ -8,6 +8,7 @@ import { useListsMutations } from "@/app/features/lists/hooks/useListsMutations"
 import type { List, ListSummary } from "@/app/features/lists/types";
 
 const pushMock = jest.fn();
+let treeListMountCounter = 0;
 
 jest.mock("next/router", () => ({
   useRouter: jest.fn(() => ({ push: pushMock, query: {} })),
@@ -35,11 +36,36 @@ jest.mock("@/app/features/lists/components/ListsSidebar/ListsSidebar", () => ({
 
 jest.mock("@/app/features/lists/components/TreeList/TreeList", () => ({
   __esModule: true,
-  default: ({ mode, nodes, listId }: { mode: string; nodes: Array<{ id: string }>; listId: string }) => (
-    <div data-testid={`tree-list-${mode}`}>
-      nodes:{nodes.length} list:{listId}
-    </div>
-  ),
+  default: class MockTreeList extends React.Component<
+    { mode: string; nodes: Array<{ id: string }>; listId: string },
+    { draftCounter: number }
+  > {
+    private readonly mountId: string;
+
+    constructor(props: { mode: string; nodes: Array<{ id: string }>; listId: string }) {
+      super(props);
+      treeListMountCounter += 1;
+      this.mountId = `mount-${treeListMountCounter}`;
+      this.state = { draftCounter: 0 };
+    }
+
+    render() {
+      const { mode, nodes, listId } = this.props;
+
+      return (
+        <div data-testid={`tree-list-${mode}`} data-mount-id={this.mountId}>
+          nodes:{nodes.length} list:{listId}
+          <button
+            type="button"
+            onClick={() => this.setState((current) => ({ draftCounter: current.draftCounter + 1 }))}
+          >
+            preserve-{mode}-draft
+          </button>
+          <span data-testid={`tree-list-${mode}-draft-counter`}>{this.state.draftCounter}</span>
+        </div>
+      );
+    }
+  },
 }));
 
 jest.mock("@/app/features/lists/components/Link/Link", () => ({
@@ -333,6 +359,56 @@ describe("List page (pages router)", () => {
     expect(screen.getByTestId("tree-list-pending")).toHaveTextContent("nodes:0");
     expect(screen.getByTestId("tree-list-pending")).toHaveTextContent("list:list-1");
     expect(screen.getByTestId("add-root-item-button")).toBeInTheDocument();
+  });
+
+  test("conserva estado local del TreeList al pasar de vacía a primer ítem", () => {
+    const queryState = {
+      current: {
+        lists: [{ id: "list-1", title: "Lista 1" }],
+        activeList: {
+          id: "list-1",
+          title: "Lista 1",
+          items: [] as Array<{ id: string; title: string; completed: boolean; children: [] }>,
+        },
+      },
+    };
+
+    useActiveListQueryMock.mockImplementation(
+      () =>
+        ({
+          data: queryState.current,
+        }) as never
+    );
+
+    const props = createPageProps({
+      activeList: {
+        id: "list-1",
+        title: "Lista 1",
+        items: [],
+      },
+    });
+
+    const { rerender } = render(<ListPage {...props} />);
+
+    const pendingTree = screen.getByTestId("tree-list-pending");
+    const initialMountId = pendingTree.getAttribute("data-mount-id");
+    expect(initialMountId).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "preserve-pending-draft" }));
+    expect(screen.getByTestId("tree-list-pending-draft-counter")).toHaveTextContent("1");
+
+    queryState.current = {
+      ...queryState.current,
+      activeList: {
+        ...queryState.current.activeList,
+        items: [{ id: "item-1", title: "Primer ítem", completed: false, children: [] }],
+      },
+    };
+
+    rerender(<ListPage {...props} />);
+
+    expect(screen.getByTestId("tree-list-pending-draft-counter")).toHaveTextContent("1");
+    expect(screen.getByTestId("tree-list-pending")).toHaveAttribute("data-mount-id", initialMountId ?? "");
   });
 
   test("renderiza vista principal con pendientes y acceso a completados", () => {

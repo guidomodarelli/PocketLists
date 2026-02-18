@@ -434,66 +434,7 @@ export default function ListPage({
   const nodeForUncheckConfirmation = confirmUncheckId ? findNode(items, confirmUncheckId) : undefined;
   const uncheckConfirmationMissing = Boolean(confirmUncheckId && !nodeForUncheckConfirmation);
   const shouldConfirmReset = isResetCompletedModalOpen;
-
-  if (items.length === 0) {
-    return (
-      <ListsPageLayout
-        lists={resolvedLists}
-        defaultSidebarOpen={defaultSidebarOpen}
-        onCreateList={handleCreateList}
-        onEditListTitle={handleEditListTitle}
-        onDeleteList={handleDeleteList}
-      >
-        <PageShell>
-          <header className={styles["home-page__header"]}>
-            <div className={styles["home-page__title-row"]}>
-              <SidebarTrigger className={styles["home-page__sidebar-trigger"]} />
-              <ListTitleEditable
-                listId={runtimeListId}
-                title={resolvedActiveList.title}
-                className={styles["home-page__title"]}
-                onEditTitle={handleEditListTitle}
-              />
-            </div>
-            <p className={styles["home-page__subtitle"]}>
-              Sistema jerárquico con completado automático de padres y confirmación solo en completado
-              manual.
-            </p>
-          </header>
-          {actionError ? (
-            <div className={cn(styles["home-page__banner"], styles["home-page__banner--error"])}>
-              <h2 className={styles["home-page__banner-title"]}>{actionError.title}</h2>
-              <p className={styles["home-page__banner-description"]}>{actionError.description}</p>
-            </div>
-          ) : null}
-          <div className={styles["home-page__lists-grid"]}>
-            <Card
-              className={cn(
-                styles["home-page__list-section"],
-                styles["home-page__list-section--pending"],
-              )}
-            >
-              <div className={styles["home-page__list-header"]}>
-                <h2 className={styles["home-page__list-title"]}>Pendientes</h2>
-                <AddRootItemButton listId={runtimeListId} />
-              </div>
-              <TreeList
-                nodes={[]}
-                mode="pending"
-                listId={runtimeListId}
-                onToggleItem={handleToggleItem}
-                onConfirmParent={handleConfirmParent}
-                onConfirmUncheckParent={handleConfirmUncheckParent}
-                onCreateItem={handleCreateItem}
-                onDeleteItem={handleDeleteItem}
-                onEditItemTitle={handleEditItemTitle}
-              />
-            </Card>
-          </div>
-        </PageShell>
-      </ListsPageLayout>
-    );
-  }
+  const hasItems = items.length > 0;
 
   const pendingTree = buildVisibleTree(items, "pending");
   const completedTree = buildVisibleTree(items, "completed");
@@ -534,41 +475,45 @@ export default function ListPage({
               Sistema jerárquico con completado automático de padres y confirmación solo en completado
               manual.
             </p>
-            <div className={styles["home-page__badge-row"]}>
-              <Badge
-                className={cn(
-                  styles["home-page__badge"],
-                  styles["home-page__badge--pending"],
-                )}
-              >
-                Pendientes: {pendingCount}
-              </Badge>
-              <Badge
-                className={cn(
-                  styles["home-page__badge"],
-                  styles["home-page__badge--completed"],
-                )}
-              >
-                Completados: {completedCount}
-              </Badge>
-            </div>
-            <div className={styles["home-page__header-actions"]}>
-              <CompletedItemsDialog
-                nodes={completedTree}
-                completedCount={completedCount}
-                canResetCompleted={canResetCompleted}
-                listId={runtimeListId}
-                open={isCompletedDialogOpen}
-                onOpenChange={setIsCompletedDialogOpen}
-                onRequestResetCompleted={() => setIsResetCompletedModalOpen(true)}
-                onToggleItem={handleToggleItem}
-                onConfirmParent={handleConfirmParent}
-                onConfirmUncheckParent={handleConfirmUncheckParent}
-                onCreateItem={handleCreateItem}
-                onDeleteItem={handleDeleteItem}
-                onEditItemTitle={handleEditItemTitle}
-              />
-            </div>
+            {hasItems ? (
+              <>
+                <div className={styles["home-page__badge-row"]}>
+                  <Badge
+                    className={cn(
+                      styles["home-page__badge"],
+                      styles["home-page__badge--pending"],
+                    )}
+                  >
+                    Pendientes: {pendingCount}
+                  </Badge>
+                  <Badge
+                    className={cn(
+                      styles["home-page__badge"],
+                      styles["home-page__badge--completed"],
+                    )}
+                  >
+                    Completados: {completedCount}
+                  </Badge>
+                </div>
+                <div className={styles["home-page__header-actions"]}>
+                  <CompletedItemsDialog
+                    nodes={completedTree}
+                    completedCount={completedCount}
+                    canResetCompleted={canResetCompleted}
+                    listId={runtimeListId}
+                    open={isCompletedDialogOpen}
+                    onOpenChange={setIsCompletedDialogOpen}
+                    onRequestResetCompleted={() => setIsResetCompletedModalOpen(true)}
+                    onToggleItem={handleToggleItem}
+                    onConfirmParent={handleConfirmParent}
+                    onConfirmUncheckParent={handleConfirmUncheckParent}
+                    onCreateItem={handleCreateItem}
+                    onDeleteItem={handleDeleteItem}
+                    onEditItemTitle={handleEditItemTitle}
+                  />
+                </div>
+              </>
+            ) : null}
           </header>
 
           {actionError ? (
