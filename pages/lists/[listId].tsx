@@ -68,13 +68,9 @@ export const getServerSideProps = (async ({ params, query, req }) => {
 
   if (!activeList) {
     return {
-      props: {
-        listId: normalizedListId,
-        lists,
-        defaultSidebarOpen,
-        error: "No encontramos la lista solicitada.",
-        details: "Seleccioná otra lista desde la barra lateral.",
-        searchParams: query,
+      redirect: {
+        destination: "/",
+        permanent: false,
       },
     };
   }

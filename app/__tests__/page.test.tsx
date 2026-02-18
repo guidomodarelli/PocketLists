@@ -303,7 +303,7 @@ describe("List page (pages router)", () => {
     });
   });
 
-  test("getServerSideProps devuelve error y sidebar cerrado cuando corresponde", async () => {
+  test("getServerSideProps redirige al inicio cuando la lista no existe", async () => {
     servicesMock.getListSummaries.mockResolvedValue([{ id: "list-2", title: "Lista 2" }]);
     servicesMock.getListById.mockResolvedValue(undefined);
 
@@ -315,13 +315,9 @@ describe("List page (pages router)", () => {
     );
 
     expect(result).toEqual({
-      props: {
-        listId: "missing",
-        lists: [{ id: "list-2", title: "Lista 2" }],
-        defaultSidebarOpen: false,
-        error: "No encontramos la lista solicitada.",
-        details: "Seleccioná otra lista desde la barra lateral.",
-        searchParams: {},
+      redirect: {
+        destination: "/",
+        permanent: false,
       },
     });
   });
