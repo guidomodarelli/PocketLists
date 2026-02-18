@@ -266,11 +266,14 @@ export default function ListPage({
 }: ListPageProps) {
   const router = useRouter();
   const runtimeListId = getRouteListId(router.query.listId) ?? listId;
+  const runtimeSearchParams: SearchParams = router.isReady
+    ? (router.query as SearchParams)
+    : (searchParams ?? {});
   const listPath = `/lists/${encodeURIComponent(runtimeListId)}`;
   const [sidebarLists, setSidebarLists] = useState<ListSummary[]>(lists);
   const [isCompletedDialogOpen, setIsCompletedDialogOpen] = useState(false);
   const [isResetCompletedModalOpen, setIsResetCompletedModalOpen] = useState(false);
-  const errorParam = getSingleParam(searchParams, "error");
+  const errorParam = getSingleParam(runtimeSearchParams, "error");
   const actionError = resolveActionError(errorParam);
   const routeMatchesInitialProps = runtimeListId === listId;
   const { data: queryData, error: queryError } = useActiveListQuery(runtimeListId, {
@@ -427,10 +430,10 @@ export default function ListPage({
   }
 
   const items = resolvedActiveList.items;
-  const confirmId = getSingleParam(searchParams, "confirm");
+  const confirmId = getSingleParam(runtimeSearchParams, "confirm");
   const nodeForConfirmation = confirmId ? findNode(items, confirmId) : undefined;
   const confirmationMissing = Boolean(confirmId && !nodeForConfirmation);
-  const confirmUncheckId = getSingleParam(searchParams, "confirmUncheck");
+  const confirmUncheckId = getSingleParam(runtimeSearchParams, "confirmUncheck");
   const nodeForUncheckConfirmation = confirmUncheckId ? findNode(items, confirmUncheckId) : undefined;
   const uncheckConfirmationMissing = Boolean(confirmUncheckId && !nodeForUncheckConfirmation);
   const shouldConfirmReset = isResetCompletedModalOpen;

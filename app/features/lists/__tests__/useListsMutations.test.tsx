@@ -142,6 +142,58 @@ describe("useListsMutations", () => {
     expect(invalidateQueriesSpy).not.toHaveBeenCalled();
   });
 
+  test("createList no agrega lista temporal por update optimista", async () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(listsQueryKey("list-1"), createListsResponse());
+
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+
+    let resolveMutation: ((value: { ok: boolean; json: () => Promise<unknown> }) => void) | null = null;
+    global.fetch = jest.fn((input: RequestInfo | URL) => {
+      const requestUrl = typeof input === "string" ? input : input.toString();
+
+      if (requestUrl === "/api/lists") {
+        return new Promise((resolve) => {
+          resolveMutation = resolve as (value: { ok: boolean; json: () => Promise<unknown> }) => void;
+        }) as Promise<Response>;
+      }
+
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({
+          lists: [{ id: "list-2", title: "Lista canónica" }],
+          activeList: { id: "list-2", title: "Lista canónica", items: [] },
+        }),
+      } as Response);
+    }) as typeof fetch;
+
+    const { result } = renderHook(() => useListsMutations("list-1"), { wrapper });
+
+    let mutationPromise: Promise<unknown> = Promise.resolve();
+    act(() => {
+      mutationPromise = result.current.mutateAction("createList", {});
+    });
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    const dataDuringMutation = queryClient.getQueryData<ListsResponse>(listsQueryKey("list-1"));
+    expect(dataDuringMutation?.lists).toHaveLength(1);
+    expect(dataDuringMutation?.lists[0]?.id).toBe("list-1");
+
+    act(() => {
+      resolveMutation?.({
+        ok: true,
+        json: async () => ({ redirectTo: "/lists/list-2" }),
+      });
+    });
+
+    await mutationPromise;
+  });
+
   test("evita sincronización canónica intermedia con mutaciones concurrentes", async () => {
     const queryClient = new QueryClient();
     queryClient.setQueryData(listsQueryKey("list-1"), createListsResponseWithTwoItems());

@@ -8,10 +8,13 @@ import { useListsMutations } from "@/app/features/lists/hooks/useListsMutations"
 import type { List, ListSummary } from "@/app/features/lists/types";
 
 const pushMock = jest.fn();
+const routerQueryState: { current: Record<string, string | string[] | undefined> } = {
+  current: {},
+};
 let treeListMountCounter = 0;
 
 jest.mock("next/router", () => ({
-  useRouter: jest.fn(() => ({ push: pushMock, query: {} })),
+  useRouter: jest.fn(() => ({ push: pushMock, query: routerQueryState.current, isReady: true })),
 }));
 
 jest.mock("@/app/features/lists/services", () => ({
@@ -259,6 +262,7 @@ describe("List page (pages router)", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     pushMock.mockReset();
+    routerQueryState.current = {};
     useActiveListQueryMock.mockImplementation((_listId, options) => ({
       data: options.initialActiveList
         ? {
@@ -451,6 +455,25 @@ describe("List page (pages router)", () => {
     expect(screen.getByTestId("completed-items-dialog")).toBeInTheDocument();
   });
 
+  test("usa la query actual del router para resolver error banner", () => {
+    routerQueryState.current = { listId: "list-1" };
+
+    render(
+      <ListPage
+        {...createPageProps({
+          activeList: {
+            id: "list-1",
+            title: "Lista 1",
+            items: [{ id: "pending-1", title: "Pendiente", completed: false, children: [] }],
+          },
+          searchParams: { error: "add" },
+        })}
+      />
+    );
+
+    expect(screen.queryByText("No pudimos agregar el ítem.")).not.toBeInTheDocument();
+  });
+
   test("muestra modal de confirmación reset al solicitarlo desde el cliente", () => {
     render(
       <ListPage
@@ -520,6 +543,8 @@ describe("List page (pages router)", () => {
   });
 
   test("muestra banner cuando confirm apunta a un ítem inexistente", () => {
+    routerQueryState.current = { listId: "list-1", confirm: "missing-id" };
+
     render(
       <ListPage
         {...createPageProps({
@@ -528,7 +553,7 @@ describe("List page (pages router)", () => {
             title: "Lista 1",
             items: [{ id: "root", title: "Root", completed: false, children: [] }],
           },
-          searchParams: { confirm: "missing-id" },
+          searchParams: {},
         })}
       />
     );

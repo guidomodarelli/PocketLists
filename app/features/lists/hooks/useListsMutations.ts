@@ -34,6 +34,7 @@ const ACTIONS_WITH_OPTIMISTIC_ONLY_SYNC: ReadonlySet<ListsMutationAction> = new 
   "confirmUncheckParent",
   "resetCompleted",
 ]);
+const ACTIONS_WITHOUT_OPTIMISTIC_UPDATE: ReadonlySet<ListsMutationAction> = new Set(["createList"]);
 const DEFERRED_CANONICAL_SYNC_ACTIONS: ReadonlySet<ListsMutationAction> = new Set(["createItem"]);
 const DEFERRED_CANONICAL_SYNC_DELAY_MS = 350;
 
@@ -160,7 +161,7 @@ export function useListsMutations(listId: string, options: UseListsMutationsOpti
       await queryClient.cancelQueries({ queryKey });
 
       const previousData = queryClient.getQueryData<ListsResponse>(queryKey);
-      if (previousData) {
+      if (previousData && !ACTIONS_WITHOUT_OPTIMISTIC_UPDATE.has(variables.action)) {
         const optimisticData = applyOptimisticMutation(previousData, variables.action, variables.payload);
         queryClient.setQueryData(queryKey, optimisticData);
       }
