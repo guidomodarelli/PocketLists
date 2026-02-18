@@ -123,6 +123,14 @@ export function createListsUseCases(repository: ListsRepository): ListsUseCases 
   };
 
   const createItem = async (listId: string, title: string, parentId?: string): Promise<ItemNode[] | null> => {
+    if (repository.createItemInList) {
+      const created = await repository.createItemInList(listId, title, parentId);
+      if (!created) {
+        return null;
+      }
+      return (await getListById(listId))?.items ?? null;
+    }
+
     const list = await getListById(listId);
     if (!list) {
       return null;
@@ -152,6 +160,14 @@ export function createListsUseCases(repository: ListsRepository): ListsUseCases 
   };
 
   const deleteItem = async (listId: string, id: string): Promise<ItemNode[] | null> => {
+    if (repository.deleteItemInList) {
+      const deleted = await repository.deleteItemInList(listId, id);
+      if (!deleted) {
+        return null;
+      }
+      return (await getListById(listId))?.items ?? null;
+    }
+
     const list = await getListById(listId);
     if (!list) {
       return null;
@@ -166,6 +182,14 @@ export function createListsUseCases(repository: ListsRepository): ListsUseCases 
   };
 
   const updateItemTitle = async (listId: string, id: string, title: string): Promise<ItemNode[] | null> => {
+    if (repository.updateItemTitleInList) {
+      const updated = await repository.updateItemTitleInList(listId, id, title);
+      if (!updated) {
+        return null;
+      }
+      return (await getListById(listId))?.items ?? null;
+    }
+
     const list = await getListById(listId);
     if (!list) {
       return null;

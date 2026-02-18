@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { getTursoDb } from "@/lib/db/client";
 import { INITIAL_LISTS } from "@/app/features/lists/data";
 import { itemsTable, listsTable } from "@/lib/db/schema";
@@ -308,6 +308,185 @@ export class TursoListsRepository implements ListsRepository {
 
     const list = await this.getListById(listId);
     return list ?? null;
+  }
+
+  async createItemInList(listId: string, title: string, parentId?: string): Promise<boolean> {
+    await this.initializationPromise;
+    const db = this.getDb();
+    const list = await db
+      .select({ id: listsTable.id })
+      .from(listsTable)
+      .where(eq(listsTable.id, listId))
+      .limit(1);
+    if (!list[0]) {
+      return false;
+    }
+
+    if (parentId) {
+      const parent = await db
+        .select({ id: itemsTable.id })
+        .from(itemsTable)
+        .where(and(eq(itemsTable.id, parentId), eq(itemsTable.listId, listId)))
+        .limit(1);
+      if (!parent[0]) {
+        return false;
+      }
+    }
+
+    const now = new Date().toISOString();
+    const newItemId = `item-${randomUUID()}`;
+
+    await db.transaction(async (tx) => {
+      if (parentId) {
+        await tx.run(sql`
+          UPDATE items
+          SET position = position + 1, updated_at = ${now}
+          WHERE list_id = ${listId} AND parent_id = ${parentId}
+        `);
+      } else {
+        await tx.run(sql`
+          UPDATE items
+          SET position = position + 1, updated_at = ${now}
+          WHERE list_id = ${listId} AND parent_id IS NULL
+        `);
+      }
+
+      await tx.insert(itemsTable).values({
+        id: newItemId,
+        listId,
+        parentId: parentId ?? null,
+        title,
+        completed: false,
+        position: 0,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      if (parentId) {
+        // Adding an incomplete child makes all ancestors incomplete.
+        await tx.run(sql`
+          WITH RECURSIVE ancestors(id, parent_id) AS (
+            SELECT id, parent_id
+            FROM items
+            WHERE id = ${parentId} AND list_id = ${listId}
+            UNION ALL
+            SELECT item.id, item.parent_id
+            FROM items AS item
+            INNER JOIN ancestors ON item.id = ancestors.parent_id
+            WHERE item.list_id = ${listId}
+          )
+          UPDATE items
+          SET completed = 0, updated_at = ${now}
+          WHERE id IN (SELECT id FROM ancestors)
+        `);
+      }
+
+      await tx
+        .update(listsTable)
+        .set({ updatedAt: now })
+        .where(eq(listsTable.id, listId));
+    });
+
+    return true;
+  }
+
+  async deleteItemInList(listId: string, itemId: string): Promise<boolean> {
+    await this.initializationPromise;
+    const db = this.getDb();
+    const target = await db
+      .select({
+        id: itemsTable.id,
+        parentId: itemsTable.parentId,
+        position: itemsTable.position,
+      })
+      .from(itemsTable)
+      .where(and(eq(itemsTable.id, itemId), eq(itemsTable.listId, listId)))
+      .limit(1);
+    const targetItem = target[0];
+    if (!targetItem) {
+      return false;
+    }
+
+    const now = new Date().toISOString();
+
+    await db.transaction(async (tx) => {
+      await tx.delete(itemsTable).where(and(eq(itemsTable.id, itemId), eq(itemsTable.listId, listId)));
+
+      if (targetItem.parentId) {
+        await tx.run(sql`
+          UPDATE items
+          SET position = position - 1, updated_at = ${now}
+          WHERE list_id = ${listId}
+            AND parent_id = ${targetItem.parentId}
+            AND position > ${targetItem.position}
+        `);
+      } else {
+        await tx.run(sql`
+          UPDATE items
+          SET position = position - 1, updated_at = ${now}
+          WHERE list_id = ${listId}
+            AND parent_id IS NULL
+            AND position > ${targetItem.position}
+        `);
+      }
+
+      let ancestorId = targetItem.parentId;
+      while (ancestorId) {
+        const children = await tx
+          .select({ completed: itemsTable.completed })
+          .from(itemsTable)
+          .where(and(eq(itemsTable.listId, listId), eq(itemsTable.parentId, ancestorId)));
+
+        if (children.length > 0) {
+          const isAncestorCompleted = children.every((child) => child.completed);
+          await tx
+            .update(itemsTable)
+            .set({ completed: isAncestorCompleted, updatedAt: now })
+            .where(and(eq(itemsTable.id, ancestorId), eq(itemsTable.listId, listId)));
+        }
+
+        const parent = await tx
+          .select({ parentId: itemsTable.parentId })
+          .from(itemsTable)
+          .where(and(eq(itemsTable.id, ancestorId), eq(itemsTable.listId, listId)))
+          .limit(1);
+        ancestorId = parent[0]?.parentId ?? null;
+      }
+
+      await tx
+        .update(listsTable)
+        .set({ updatedAt: now })
+        .where(eq(listsTable.id, listId));
+    });
+
+    return true;
+  }
+
+  async updateItemTitleInList(listId: string, itemId: string, title: string): Promise<boolean> {
+    await this.initializationPromise;
+    const db = this.getDb();
+    const target = await db
+      .select({ id: itemsTable.id })
+      .from(itemsTable)
+      .where(and(eq(itemsTable.id, itemId), eq(itemsTable.listId, listId)))
+      .limit(1);
+    if (!target[0]) {
+      return false;
+    }
+
+    const now = new Date().toISOString();
+    await db.transaction(async (tx) => {
+      await tx
+        .update(itemsTable)
+        .set({ title, updatedAt: now })
+        .where(and(eq(itemsTable.id, itemId), eq(itemsTable.listId, listId)));
+      await tx
+        .update(listsTable)
+        .set({ updatedAt: now })
+        .where(eq(listsTable.id, listId));
+    });
+
+    return true;
   }
 
   async saveListItems(listId: string, items: ItemNode[]): Promise<ItemNode[] | null> {

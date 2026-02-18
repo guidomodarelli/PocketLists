@@ -9,4 +9,15 @@ export interface ListsRepository {
   deleteList(listId: string): Promise<boolean>;
   updateListTitle(listId: string, title: string): Promise<List | null>;
   saveListItems(listId: string, items: ItemNode[]): Promise<ItemNode[] | null>;
+  createItemInList?(
+    listId: string,
+    title: string,
+    parentId?: string
+  ): Promise<boolean>;
+  deleteItemInList?(listId: string, itemId: string): Promise<boolean>;
+  updateItemTitleInList?(
+    listId: string,
+    itemId: string,
+    title: string
+  ): Promise<boolean>;
 }

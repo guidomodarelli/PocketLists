@@ -172,4 +172,75 @@ describe("TursoListsRepository", () => {
     await repository.saveListItems(listId, bigTree);
     await expect(repository.saveListItems(listId, [])).resolves.toEqual([]);
   });
+
+  test("createItemInList agrega hijo al inicio y actualiza completitud de ancestros", async () => {
+    const repository = new TursoListsRepository();
+    const listId = "list-travel";
+    await repository.saveListItems(listId, [
+      {
+        id: "item-parent",
+        title: "Parent",
+        completed: true,
+        children: [{ id: "item-child-1", title: "Child 1", completed: true, children: [] }],
+      },
+    ]);
+
+    await expect(repository.createItemInList(listId, "New child", "item-parent")).resolves.toBe(true);
+    const list = await repository.getListById(listId);
+    const parent = list?.items[0];
+    expect(parent?.children[0]?.title).toBe("New child");
+    expect(parent?.completed).toBe(false);
+  });
+
+  test("deleteItemInList elimina nodo y recalcula completitud de ancestros", async () => {
+    const repository = new TursoListsRepository();
+    const listId = "list-travel";
+    await repository.saveListItems(listId, [
+      {
+        id: "item-parent",
+        title: "Parent",
+        completed: false,
+        children: [
+          { id: "item-child-complete", title: "Child complete", completed: true, children: [] },
+          { id: "item-child-pending", title: "Child pending", completed: false, children: [] },
+        ],
+      },
+    ]);
+
+    await expect(repository.deleteItemInList(listId, "item-child-pending")).resolves.toBe(true);
+    const list = await repository.getListById(listId);
+    const parent = list?.items[0];
+    expect(parent?.children.some((child) => child.id === "item-child-pending")).toBe(false);
+    expect(parent?.completed).toBe(true);
+  });
+
+  test("updateItemTitleInList actualiza solo el título del ítem", async () => {
+    const repository = new TursoListsRepository();
+    const listId = "list-travel";
+    const targetItemId = "headphones";
+    await repository.getListById(listId);
+    const db = getTursoDb();
+    if (!db) {
+      throw new Error("Database should be available for title update test");
+    }
+
+    const beforeUpdate = await db
+      .select({ createdAt: itemsTable.createdAt })
+      .from(itemsTable)
+      .where(eq(itemsTable.id, targetItemId))
+      .limit(1);
+    expect(beforeUpdate[0]?.createdAt).toBeDefined();
+
+    await expect(repository.updateItemTitleInList(listId, targetItemId, "Auriculares Pro")).resolves.toBe(true);
+
+    const updatedList = await repository.getListById(listId);
+    expect(updatedList?.items[1]?.children[0]?.title).toBe("Auriculares Pro");
+
+    const afterUpdate = await db
+      .select({ createdAt: itemsTable.createdAt })
+      .from(itemsTable)
+      .where(eq(itemsTable.id, targetItemId))
+      .limit(1);
+    expect(afterUpdate[0]?.createdAt).toBe(beforeUpdate[0]?.createdAt);
+  });
 });
