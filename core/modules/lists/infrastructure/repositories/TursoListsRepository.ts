@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { asc, eq, sql } from "drizzle-orm";
+import { asc, eq, inArray, sql } from "drizzle-orm";
 import { getTursoDb } from "@/lib/db/client";
 import { INITIAL_LISTS } from "@/app/features/lists/data";
 import { itemsTable, listsTable } from "@/lib/db/schema";
@@ -326,13 +326,48 @@ export class TursoListsRepository implements ListsRepository {
     const normalizedItems = normalizeTree(items);
     const now = new Date().toISOString();
     const flatRows = flattenTreeToRecords(listId, normalizedItems);
+    const incomingById = new Map(flatRows.map((item) => [item.id, item]));
+
+    const existingRows = await db
+      .select({
+        id: itemsTable.id,
+        listId: itemsTable.listId,
+        parentId: itemsTable.parentId,
+        title: itemsTable.title,
+        completed: itemsTable.completed,
+        position: itemsTable.position,
+      })
+      .from(itemsTable)
+      .where(eq(itemsTable.listId, listId));
+
+    const existingById = new Map(existingRows.map((row) => [row.id, row]));
+    const itemIdsToDelete = existingRows
+      .filter((existingRow) => !incomingById.has(existingRow.id))
+      .map((existingRow) => existingRow.id);
+
+    const itemsToInsert = flatRows.filter((incomingRow) => !existingById.has(incomingRow.id));
+    const itemsToUpdate = flatRows.filter((incomingRow) => {
+      const existingRow = existingById.get(incomingRow.id);
+      if (!existingRow) {
+        return false;
+      }
+      return (
+        existingRow.parentId !== incomingRow.parentId ||
+        existingRow.title !== incomingRow.title ||
+        existingRow.completed !== incomingRow.completed ||
+        existingRow.position !== incomingRow.position ||
+        existingRow.listId !== incomingRow.listId
+      );
+    });
 
     await db.transaction(async (tx) => {
-      await tx.delete(itemsTable).where(eq(itemsTable.listId, listId));
+      if (itemIdsToDelete.length > 0) {
+        await tx.delete(itemsTable).where(inArray(itemsTable.id, itemIdsToDelete));
+      }
 
-      if (flatRows.length > 0) {
+      if (itemsToInsert.length > 0) {
         await tx.insert(itemsTable).values(
-          flatRows.map((item) => ({
+          itemsToInsert.map((item) => ({
             id: item.id,
             listId: item.listId,
             parentId: item.parentId,
@@ -343,6 +378,20 @@ export class TursoListsRepository implements ListsRepository {
             updatedAt: now,
           }))
         );
+      }
+
+      for (const item of itemsToUpdate) {
+        await tx
+          .update(itemsTable)
+          .set({
+            listId: item.listId,
+            parentId: item.parentId,
+            title: item.title,
+            completed: item.completed,
+            position: item.position,
+            updatedAt: now,
+          })
+          .where(eq(itemsTable.id, item.id));
       }
 
       await tx
