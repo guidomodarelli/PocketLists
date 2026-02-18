@@ -311,7 +311,7 @@ export default function TreeList({
                         return;
                       }
 
-                      setDraftRootTitle(null);
+                      setDraftRootTitle("");
                       void onCreateItem(listId, nextTitle);
                     }}
                   >
@@ -322,6 +322,20 @@ export default function TreeList({
                         value={draftRootTitle ?? ""}
                         onChange={(event) => setDraftRootTitle(event.target.value)}
                         className={styles["tree-list__edit-input"]}
+                        onKeyDown={(event) => {
+                          if (event.key !== "Enter") {
+                            return;
+                          }
+
+                          event.preventDefault();
+                          const nextTitle = (draftRootTitle ?? "").trim();
+                          if (nextTitle.length === 0) {
+                            setDraftRootTitle(null);
+                            return;
+                          }
+
+                          event.currentTarget.form?.requestSubmit();
+                        }}
                         placeholder="Nuevo ítem"
                         required
                         autoFocus

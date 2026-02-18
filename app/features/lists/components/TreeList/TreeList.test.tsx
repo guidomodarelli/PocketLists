@@ -133,6 +133,38 @@ describe("TreeList", () => {
     expect(screen.getByText("No hay ítems para mostrar en esta vista.")).toBeInTheDocument();
   });
 
+  test("con Enter en borrador raíz crea ítem y mantiene input para carga encadenada", () => {
+    const onCreateItem = jest.fn();
+    render(<TreeList nodes={[]} mode="pending" listId="list-1" onCreateItem={onCreateItem} />);
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent("lists:add-root-draft", { detail: { listId: "list-1" } }));
+    });
+
+    const input = screen.getByPlaceholderText("Nuevo ítem");
+    fireEvent.change(input, { target: { value: "Root encadenado" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(onCreateItem).toHaveBeenCalledWith("list-1", "Root encadenado");
+    expect(screen.getByPlaceholderText("Nuevo ítem")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("")).toBeInTheDocument();
+  });
+
+  test("con Enter en borrador raíz vacío descarta sin crear", () => {
+    const onCreateItem = jest.fn();
+    render(<TreeList nodes={[]} mode="pending" listId="list-1" onCreateItem={onCreateItem} />);
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent("lists:add-root-draft", { detail: { listId: "list-1" } }));
+    });
+
+    const input = screen.getByPlaceholderText("Nuevo ítem");
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(onCreateItem).not.toHaveBeenCalled();
+    expect(screen.queryByPlaceholderText("Nuevo ítem")).not.toBeInTheDocument();
+  });
+
   test("abre modal de completar cuando se clickea padre pendiente", () => {
     const parent = createNode({
       id: "parent",

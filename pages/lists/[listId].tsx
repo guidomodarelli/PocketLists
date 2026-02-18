@@ -178,6 +178,30 @@ function isDifferentLocation(redirectTo: string): boolean {
   return redirectUrl.pathname !== window.location.pathname || redirectUrl.search !== window.location.search;
 }
 
+function isInteractiveTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) {
+    return false;
+  }
+
+  if (
+    target.closest(
+      "input, textarea, select, button, a, [contenteditable=''], [contenteditable='true'], [contenteditable=true]"
+    )
+  ) {
+    return true;
+  }
+
+  if (
+    target.closest(
+      "[role='button'], [role='menuitem'], [role='checkbox'], [role='switch'], [role='radio'], [role='tab'], [role='link'], [role='option'], [role='textbox'], [role='combobox']"
+    )
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 function ListsPageLayout({
   children,
   lists,
@@ -263,6 +287,31 @@ export default function ListPage({
       setSidebarLists(queryData.lists);
     }
   }, [queryData?.lists]);
+
+  useEffect(() => {
+    const handleGlobalEnter = (event: KeyboardEvent) => {
+      if (event.key !== "Enter" || event.defaultPrevented || event.repeat || event.isComposing) {
+        return;
+      }
+
+      const keyboardTarget = event.target instanceof Element ? event.target : document.activeElement;
+      if (isInteractiveTarget(keyboardTarget)) {
+        return;
+      }
+
+      window.dispatchEvent(
+        new CustomEvent("lists:add-root-draft", {
+          detail: { listId: runtimeListId },
+        })
+      );
+    };
+
+    window.addEventListener("keydown", handleGlobalEnter);
+
+    return () => {
+      window.removeEventListener("keydown", handleGlobalEnter);
+    };
+  }, [runtimeListId]);
 
   const resolvedLists = queryData?.lists ?? sidebarLists;
   const resolvedActiveList = queryData?.activeList ?? (routeMatchesInitialProps ? activeList : undefined);

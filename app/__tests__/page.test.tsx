@@ -459,4 +459,60 @@ describe("List page (pages router)", () => {
 
     expect(screen.getByText("No encontramos el ítem que querías confirmar. Probá actualizar la página.")).toBeInTheDocument();
   });
+
+  test("con Enter global dispara evento para abrir borrador raíz", () => {
+    const dispatchEventSpy = jest.spyOn(window, "dispatchEvent");
+
+    render(
+      <ListPage
+        {...createPageProps({
+          activeList: {
+            id: "list-1",
+            title: "Lista 1",
+            items: [{ id: "pending-1", title: "Pendiente", completed: false, children: [] }],
+          },
+        })}
+      />
+    );
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+
+    expect(dispatchEventSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "lists:add-root-draft",
+      })
+    );
+
+    dispatchEventSpy.mockRestore();
+  });
+
+  test("ignora Enter global cuando el foco está en un input editable", () => {
+    const dispatchEventSpy = jest.spyOn(window, "dispatchEvent");
+    const editableInput = document.createElement("input");
+    document.body.appendChild(editableInput);
+
+    render(
+      <ListPage
+        {...createPageProps({
+          activeList: {
+            id: "list-1",
+            title: "Lista 1",
+            items: [{ id: "pending-1", title: "Pendiente", completed: false, children: [] }],
+          },
+        })}
+      />
+    );
+
+    editableInput.focus();
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+
+    expect(dispatchEventSpy).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "lists:add-root-draft",
+      })
+    );
+
+    editableInput.remove();
+    dispatchEventSpy.mockRestore();
+  });
 });
