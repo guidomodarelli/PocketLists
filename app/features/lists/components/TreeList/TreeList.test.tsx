@@ -321,6 +321,42 @@ describe("TreeList", () => {
     expect(screen.queryByDisplayValue("Hijo temporal")).not.toBeInTheDocument();
   });
 
+  test("con Enter en borrador de hijo crea ítem y mantiene nuevo borrador hermano", () => {
+    const onCreateItem = jest.fn();
+    const parent = createNode({ id: "parent-enter-child", title: "Padre Enter hijo", children: [] });
+
+    render(
+      <TreeList nodes={[parent]} mode="pending" listId="list-1" onCreateItem={onCreateItem} />
+    );
+    fireEvent.click(screen.getByLabelText("Agregar hijo a Padre Enter hijo"));
+
+    const input = screen.getByPlaceholderText("Nuevo hijo");
+    fireEvent.change(input, { target: { value: "Hijo 1" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(onCreateItem).toHaveBeenCalledWith("list-1", "Hijo 1", "parent-enter-child");
+    expect(screen.getByPlaceholderText("Nuevo hijo")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("")).toBeInTheDocument();
+  });
+
+  test("con Guardar en borrador de hijo crea ítem y mantiene nuevo borrador hermano", () => {
+    const onCreateItem = jest.fn();
+    const parent = createNode({ id: "parent-save-child", title: "Padre Guardar hijo", children: [] });
+
+    render(
+      <TreeList nodes={[parent]} mode="pending" listId="list-1" onCreateItem={onCreateItem} />
+    );
+    fireEvent.click(screen.getByLabelText("Agregar hijo a Padre Guardar hijo"));
+
+    const input = screen.getByPlaceholderText("Nuevo hijo");
+    fireEvent.change(input, { target: { value: "Hijo 2" } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+
+    expect(onCreateItem).toHaveBeenCalledWith("list-1", "Hijo 2", "parent-save-child");
+    expect(screen.getByPlaceholderText("Nuevo hijo")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("")).toBeInTheDocument();
+  });
+
   test("abre dialog de eliminación para ítem hoja", () => {
     const leaf = createNode({ id: "leaf-delete", title: "Hoja para borrar", children: [] });
 

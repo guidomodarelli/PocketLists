@@ -683,7 +683,7 @@ export default function TreeList({
                                 return;
                               }
 
-                              setDraftChild(null);
+                              setDraftChild({ parentId: node.id, title: "" });
                               void onCreateItem(listId, nextTitle, node.id);
                             }}
                           >
@@ -700,6 +700,20 @@ export default function TreeList({
                                   );
                                 }}
                                 className={styles["tree-list__edit-input"]}
+                                onKeyDown={(event) => {
+                                  if (event.key !== "Enter") {
+                                    return;
+                                  }
+
+                                  event.preventDefault();
+                                  const nextTitle = draftChild.title.trim();
+                                  if (nextTitle.length === 0) {
+                                    setDraftChild(null);
+                                    return;
+                                  }
+
+                                  event.currentTarget.form?.requestSubmit();
+                                }}
                                 placeholder="Nuevo hijo"
                                 required
                                 autoFocus
