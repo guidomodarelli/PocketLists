@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -33,6 +34,8 @@ const ACTIONS_WITH_OPTIMISTIC_ONLY_SYNC: ReadonlySet<ListsMutationAction> = new 
   "confirmUncheckParent",
   "resetCompleted",
 ]);
+const DEFERRED_CANONICAL_SYNC_ACTIONS: ReadonlySet<ListsMutationAction> = new Set(["createItem"]);
+const DEFERRED_CANONICAL_SYNC_DELAY_MS = 350;
 
 const ACTION_ERROR_MESSAGES: Record<string, string> = {
   action: "No pudimos completar la acción. Revertimos los cambios.",
@@ -106,6 +109,8 @@ export function useListsMutations(listId: string, options: UseListsMutationsOpti
   const queryClient = useQueryClient();
   const queryKey = listsQueryKey(listId);
   const mutationKey = ["lists-mutation", listId] as const;
+  const deferredSyncTimeoutRef = useRef<number | null>(null);
+  const deferredSyncTargetListIdRef = useRef<string | null>(null);
 
   const hasConcurrentMutations = () => queryClient.isMutating({ mutationKey }) > 1;
 
@@ -117,6 +122,36 @@ export function useListsMutations(listId: string, options: UseListsMutationsOpti
       await queryClient.invalidateQueries({ queryKey: ["lists"] });
     }
   };
+
+  const clearDeferredSync = () => {
+    if (deferredSyncTimeoutRef.current !== null) {
+      window.clearTimeout(deferredSyncTimeoutRef.current);
+      deferredSyncTimeoutRef.current = null;
+    }
+  };
+
+  const scheduleCanonicalSync = (targetListId: string) => {
+    deferredSyncTargetListIdRef.current = targetListId;
+    clearDeferredSync();
+
+    deferredSyncTimeoutRef.current = window.setTimeout(() => {
+      deferredSyncTimeoutRef.current = null;
+      const listIdToSync = deferredSyncTargetListIdRef.current;
+      deferredSyncTargetListIdRef.current = null;
+      if (!listIdToSync) {
+        return;
+      }
+
+      void syncCanonicalData(listIdToSync);
+    }, DEFERRED_CANONICAL_SYNC_DELAY_MS);
+  };
+
+  useEffect(() => {
+    return () => {
+      clearDeferredSync();
+      deferredSyncTargetListIdRef.current = null;
+    };
+  }, []);
 
   const mutation = useMutation<ListsMutationResponse, Error, ListsMutationVariables, ListsMutationContext>({
     mutationKey,
@@ -143,6 +178,9 @@ export function useListsMutations(listId: string, options: UseListsMutationsOpti
 
       if (ACTIONS_WITH_OPTIMISTIC_ONLY_SYNC.has(variables.action)) {
         // Keep optimistic state without immediate canonical refetch for completion actions.
+      } else if (DEFERRED_CANONICAL_SYNC_ACTIONS.has(variables.action)) {
+        // Batch fast create sequences and sync only after user activity settles.
+        scheduleCanonicalSync(targetListId);
       } else if (!hasConcurrentMutations()) {
         // When multiple mutations are in flight, syncing after each success can temporarily
         // overwrite newer optimistic changes and cause UI flicker.

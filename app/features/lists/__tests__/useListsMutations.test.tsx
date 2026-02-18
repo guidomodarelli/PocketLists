@@ -267,4 +267,84 @@ describe("useListsMutations", () => {
 
     expect(global.fetch).toHaveBeenCalledTimes(1);
   });
+
+  test("createItem en secuencia rápida difiere sincronización canónica y evita sync intermedia", async () => {
+    jest.useFakeTimers();
+    try {
+      const queryClient = new QueryClient();
+      queryClient.setQueryData(listsQueryKey("list-1"), createListsResponse());
+
+      const wrapper = ({ children }: { children: ReactNode }) => (
+        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      );
+
+      global.fetch = jest
+        .fn()
+        .mockResolvedValueOnce(
+          {
+            ok: true,
+            json: async () => ({ redirectTo: "/lists/list-1" }),
+          } as Response
+        )
+        .mockResolvedValueOnce(
+          {
+            ok: true,
+            json: async () => ({ redirectTo: "/lists/list-1" }),
+          } as Response
+        )
+        .mockResolvedValueOnce(
+          {
+            ok: true,
+            json: async () => ({
+              lists: [{ id: "list-1", title: "Lista original" }],
+              activeList: {
+                id: "list-1",
+                title: "Lista original",
+                items: [
+                  { id: "item-a", title: "Item A", completed: false, children: [] },
+                  { id: "item-b", title: "Item B", completed: false, children: [] },
+                ],
+              },
+            }),
+          } as Response
+        ) as typeof fetch;
+
+      const { result } = renderHook(() => useListsMutations("list-1"), { wrapper });
+
+      await act(async () => {
+        await Promise.all([
+          result.current.mutateAction("createItem", {
+            listId: "list-1",
+            title: "Item A",
+          }),
+          result.current.mutateAction("createItem", {
+            listId: "list-1",
+            title: "Item B",
+          }),
+        ]);
+      });
+
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+
+      act(() => {
+        jest.advanceTimersByTime(349);
+      });
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+
+      act(() => {
+        jest.advanceTimersByTime(1);
+      });
+
+      await waitFor(() => {
+        expect(global.fetch).toHaveBeenCalledTimes(3);
+      });
+
+      await waitFor(() => {
+        const canonicalData = queryClient.getQueryData<ListsResponse>(listsQueryKey("list-1"));
+        expect(canonicalData?.activeList.items.map((item) => item.id)).toEqual(["item-a", "item-b"]);
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });
