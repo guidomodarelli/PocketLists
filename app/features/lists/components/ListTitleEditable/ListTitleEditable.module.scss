@@ -4,6 +4,10 @@
   @apply m-0;
 }
 
+.list-title-editable--fluid {
+  @apply min-w-0 flex-1;
+}
+
 .list-title-editable__form {
   @apply w-full;
 }

@@ -42,7 +42,13 @@ export default function ListTitleEditable({
   }, [isEditing]);
 
   return (
-    <h1 className={cn(styles["list-title-editable"], className)}>
+    <h1
+      className={cn(
+        styles["list-title-editable"],
+        styles["list-title-editable--fluid"],
+        className
+      )}
+    >
       {isEditing ? (
         <form
           ref={formRef}

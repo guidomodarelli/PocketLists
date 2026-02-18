@@ -2,6 +2,14 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import ListTitleEditable from "./ListTitleEditable";
 
 describe("ListTitleEditable", () => {
+  test("expone clase fluida para ocupar el ancho disponible del header", () => {
+    render(<ListTitleEditable listId="list-1" title="Lista original" />);
+
+    expect(screen.getByRole("heading", { name: "Lista original" })).toHaveClass(
+      "list-title-editable--fluid"
+    );
+  });
+
   test("muestra placeholder cuando el nombre está vacío y permite editarlo", () => {
     render(<ListTitleEditable listId="list-1" title="" />);
 
