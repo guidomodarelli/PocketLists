@@ -128,7 +128,7 @@ export function createListsUseCases(repository: ListsRepository): ListsUseCases 
       if (!created) {
         return null;
       }
-      return (await getListById(listId))?.items ?? null;
+      return [];
     }
 
     const list = await getListById(listId);
@@ -165,7 +165,7 @@ export function createListsUseCases(repository: ListsRepository): ListsUseCases 
       if (!deleted) {
         return null;
       }
-      return (await getListById(listId))?.items ?? null;
+      return [];
     }
 
     const list = await getListById(listId);
@@ -187,7 +187,7 @@ export function createListsUseCases(repository: ListsRepository): ListsUseCases 
       if (!updated) {
         return null;
       }
-      return (await getListById(listId))?.items ?? null;
+      return [];
     }
 
     const list = await getListById(listId);

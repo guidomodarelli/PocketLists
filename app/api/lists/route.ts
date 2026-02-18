@@ -275,17 +275,13 @@ export async function POST(request: Request) {
         return respondRedirect(`${listPath}?error=add`);
       }
 
-      if (parentId && !(await getNodeById(listId, parentId))) {
-        return respondRedirect(`${listPath}?error=add`);
-      }
-
       const result = await createItem(listId, title, parentId);
       return respondRedirect(result ? listPath : `${listPath}?error=add`);
     }
 
     if (action === "deleteItem") {
       const id = readRequiredString(payload, "id");
-      if (!id || !(await getNodeById(listId, id))) {
+      if (!id) {
         return respondRedirect(`${listPath}?error=delete`);
       }
 
@@ -297,7 +293,7 @@ export async function POST(request: Request) {
       const id = readRequiredString(payload, "id");
       const title = readRequiredString(payload, "title");
 
-      if (!id || !title || !(await getNodeById(listId, id))) {
+      if (!id || !title) {
         return respondRedirect(`${listPath}?error=edit`);
       }
 

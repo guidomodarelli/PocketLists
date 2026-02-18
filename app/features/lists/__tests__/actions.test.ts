@@ -199,22 +199,11 @@ describe("actions", () => {
     expect(servicesMock.resetCompletedItems).toHaveBeenCalledTimes(1);
   });
 
-  test("createItemAction: valida parentId y redirige a add cuando no existe", async () => {
-    servicesMock.getNodeById.mockResolvedValue(undefined);
-
-    await expect(
-      createItemAction(createFormData({ listId: "list-1", title: "Nuevo", parentId: "missing" }))
-    ).rejects.toThrow(
-      "NEXT_REDIRECT:/lists/list-1?error=add"
-    );
-  });
-
   test("createItemAction: redirige a add cuando createItem falla", async () => {
-    servicesMock.getNodeById.mockResolvedValue({ id: "ok" });
     servicesMock.createItem.mockResolvedValue(null);
 
     await expect(
-      createItemAction(createFormData({ listId: "list-1", title: "Nuevo", parentId: "ok" }))
+      createItemAction(createFormData({ listId: "list-1", title: "Nuevo", parentId: "missing" }))
     ).rejects.toThrow(
       "NEXT_REDIRECT:/lists/list-1?error=add"
     );
@@ -231,16 +220,7 @@ describe("actions", () => {
     expect(redirectMock).toHaveBeenCalledWith("/lists/list-1");
   });
 
-  test("deleteItemAction: redirige a error cuando no existe el nodo", async () => {
-    servicesMock.getNodeById.mockResolvedValue(undefined);
-
-    await expect(deleteItemAction(createFormData({ listId: "list-1", id: "missing" }))).rejects.toThrow(
-      "NEXT_REDIRECT:/lists/list-1?error=delete"
-    );
-  });
-
   test("deleteItemAction: redirige a error cuando delete falla", async () => {
-    servicesMock.getNodeById.mockResolvedValue({ id: "ok", children: [] });
     servicesMock.deleteItem.mockResolvedValue(null);
 
     await expect(deleteItemAction(createFormData({ listId: "list-1", id: "ok" }))).rejects.toThrow(
@@ -249,7 +229,6 @@ describe("actions", () => {
   });
 
   test("deleteItemAction: elimina + revalida + redirige en happy path", async () => {
-    servicesMock.getNodeById.mockResolvedValue({ id: "ok", children: [] });
     servicesMock.deleteItem.mockResolvedValue([{ id: "remaining" }]);
 
     await expect(deleteItemAction(createFormData({ listId: "list-1", id: "ok" }))).rejects.toThrow(
@@ -260,16 +239,7 @@ describe("actions", () => {
     expect(redirectMock).toHaveBeenCalledWith("/lists/list-1");
   });
 
-  test("editItemTitleAction: redirige a error cuando no existe el nodo", async () => {
-    servicesMock.getNodeById.mockResolvedValue(undefined);
-
-    await expect(
-      editItemTitleAction(createFormData({ listId: "list-1", id: "missing", title: "Nuevo título" }))
-    ).rejects.toThrow("NEXT_REDIRECT:/lists/list-1?error=edit");
-  });
-
   test("editItemTitleAction: redirige a error cuando update falla", async () => {
-    servicesMock.getNodeById.mockResolvedValue({ id: "ok", title: "Old", children: [] });
     servicesMock.updateItemTitle.mockResolvedValue(null);
 
     await expect(
@@ -278,7 +248,6 @@ describe("actions", () => {
   });
 
   test("editItemTitleAction: actualiza + revalida + redirige en happy path", async () => {
-    servicesMock.getNodeById.mockResolvedValue({ id: "ok", title: "Old", children: [] });
     servicesMock.updateItemTitle.mockResolvedValue([{ id: "ok", title: "Nuevo título" }]);
 
     await expect(

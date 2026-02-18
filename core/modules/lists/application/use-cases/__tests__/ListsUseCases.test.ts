@@ -91,4 +91,64 @@ describe("ListsUseCases", () => {
     const useCases = createListsUseCases(createRepository());
     await expect(useCases.deleteList("missing-list")).resolves.toBe(false);
   });
+
+  test("createItem incremental evita recargar lista completa", async () => {
+    const createItemInList = jest.fn().mockResolvedValue(true);
+    const repository: ListsRepository = {
+      getLists: async () => [],
+      getListSummaries: async () => [],
+      getListById: async () => {
+        throw new Error("getListById should not be called");
+      },
+      createList: async (title: string) => ({ id: "list-1", title, items: [] }),
+      deleteList: async () => true,
+      updateListTitle: async () => null,
+      saveListItems: async () => [],
+      createItemInList,
+    };
+    const useCases = createListsUseCases(repository);
+
+    await expect(useCases.createItem("list-1", "Nuevo", "parent-1")).resolves.toEqual([]);
+    expect(createItemInList).toHaveBeenCalledWith("list-1", "Nuevo", "parent-1");
+  });
+
+  test("deleteItem incremental evita recargar lista completa", async () => {
+    const deleteItemInList = jest.fn().mockResolvedValue(true);
+    const repository: ListsRepository = {
+      getLists: async () => [],
+      getListSummaries: async () => [],
+      getListById: async () => {
+        throw new Error("getListById should not be called");
+      },
+      createList: async (title: string) => ({ id: "list-1", title, items: [] }),
+      deleteList: async () => true,
+      updateListTitle: async () => null,
+      saveListItems: async () => [],
+      deleteItemInList,
+    };
+    const useCases = createListsUseCases(repository);
+
+    await expect(useCases.deleteItem("list-1", "item-1")).resolves.toEqual([]);
+    expect(deleteItemInList).toHaveBeenCalledWith("list-1", "item-1");
+  });
+
+  test("updateItemTitle incremental evita recargar lista completa", async () => {
+    const updateItemTitleInList = jest.fn().mockResolvedValue(true);
+    const repository: ListsRepository = {
+      getLists: async () => [],
+      getListSummaries: async () => [],
+      getListById: async () => {
+        throw new Error("getListById should not be called");
+      },
+      createList: async (title: string) => ({ id: "list-1", title, items: [] }),
+      deleteList: async () => true,
+      updateListTitle: async () => null,
+      saveListItems: async () => [],
+      updateItemTitleInList,
+    };
+    const useCases = createListsUseCases(repository);
+
+    await expect(useCases.updateItemTitle("list-1", "item-1", "Nuevo título")).resolves.toEqual([]);
+    expect(updateItemTitleInList).toHaveBeenCalledWith("list-1", "item-1", "Nuevo título");
+  });
 });

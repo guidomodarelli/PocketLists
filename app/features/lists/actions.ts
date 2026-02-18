@@ -217,10 +217,6 @@ export async function createItemAction(formData: FormData): Promise<void> {
   const parentId = readOptionalString(formData, "parentId");
   const listPath = buildListPath(listId);
 
-  if (parentId && !(await services.getNodeById(listId, parentId))) {
-    return navigateTo(`${listPath}?error=add`);
-  }
-
   const result = await services.createItem(listId, title, parentId);
   if (!result) {
     return navigateTo(`${listPath}?error=add`);
@@ -238,12 +234,7 @@ export async function deleteItemAction(formData: FormData): Promise<void> {
   const services = await getListsServices();
   const listId = readRequiredString(formData, "listId");
   const id = readRequiredString(formData, "id");
-  const currentNode = await services.getNodeById(listId, id);
   const listPath = buildListPath(listId);
-
-  if (!currentNode) {
-    return navigateTo(`${listPath}?error=delete`);
-  }
 
   const result = await services.deleteItem(listId, id);
   if (!result) {
@@ -263,12 +254,7 @@ export async function editItemTitleAction(formData: FormData): Promise<void> {
   const listId = readRequiredString(formData, "listId");
   const id = readRequiredString(formData, "id");
   const title = readRequiredString(formData, "title");
-  const currentNode = await services.getNodeById(listId, id);
   const listPath = buildListPath(listId);
-
-  if (!currentNode) {
-    return navigateTo(`${listPath}?error=edit`);
-  }
 
   const result = await services.updateItemTitle(listId, id, title);
   if (!result) {

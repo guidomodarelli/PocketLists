@@ -190,17 +190,19 @@ describe("services", () => {
 
   test("createItem agrega item raíz cuando no hay parentId", async () => {
     const updated = await createItem(DEFAULT_LIST_ID, "Nuevo item raíz");
-    const newRoot = updated?.find((item) => item.title === "Nuevo item raíz");
+    const list = await getListById(DEFAULT_LIST_ID);
+    const newRoot = list?.items.find((item) => item.title === "Nuevo item raíz");
 
     expect(updated).not.toBeNull();
     expect(newRoot).toBeDefined();
     expect(newRoot?.id.startsWith("item-")).toBe(true);
-    expect(updated?.[0]?.title).toBe("Nuevo item raíz");
+    expect(list?.items[0]?.title).toBe("Nuevo item raíz");
   });
 
   test("createItem agrega item hijo cuando parentId existe", async () => {
     const updated = await createItem(DEFAULT_LIST_ID, "Hijo nuevo", "entertainment");
-    const entertainment = updated?.find((item) => item.id === "entertainment");
+    const list = await getListById(DEFAULT_LIST_ID);
+    const entertainment = list?.items.find((item) => item.id === "entertainment");
     const child = entertainment?.children.find((item) => item.title === "Hijo nuevo");
 
     expect(updated).not.toBeNull();
