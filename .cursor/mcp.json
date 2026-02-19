@@ -18,6 +18,10 @@
       "command": "npx -y https://api.motion.dev/registry.tgz?package=motion-studio-mcp&version=latest",
       "env": {},
       "args": []
+    },
+    "firebase": {
+      "command": "npx",
+      "args": ["-y", "firebase-tools@latest", "mcp"]
     }
   }
 }
