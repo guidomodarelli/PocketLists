@@ -1,5 +1,9 @@
 @reference "tailwindcss";
 
 .theme-toggle {
-  @apply fixed top-4 right-4 z-50;
+  @apply fixed top-4 right-4 z-50 flex items-center gap-2;
+}
+
+.theme-toggle__environment-badge {
+  @apply rounded-full border border-amber-500/70 bg-amber-400/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-zinc-900 shadow-sm;
 }

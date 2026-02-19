@@ -34,6 +34,7 @@ function resolveInitialTheme(): ThemeMode {
 
 export default function ThemeToggle() {
   const [theme, setTheme] = useState<ThemeMode>(resolveInitialTheme);
+  const isDevelopmentEnvironment = process.env.NODE_ENV === "development";
 
   useEffect(() => {
     applyTheme(theme);
@@ -50,6 +51,11 @@ export default function ThemeToggle() {
 
   return (
     <div className={styles["theme-toggle"]} data-testid="theme-toggle">
+      {isDevelopmentEnvironment ? (
+        <span className={styles["theme-toggle__environment-badge"]} aria-hidden>
+          DEV
+        </span>
+      ) : null}
       <Button
         type="button"
         variant="outline"

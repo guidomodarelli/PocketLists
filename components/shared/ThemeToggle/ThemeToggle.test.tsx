@@ -1,10 +1,17 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import ThemeToggle from "./ThemeToggle";
 
+const originalNodeEnv = process.env.NODE_ENV;
+
 describe("ThemeToggle", () => {
   beforeEach(() => {
     window.localStorage.clear();
     document.documentElement.classList.remove("dark");
+    process.env.NODE_ENV = originalNodeEnv;
+  });
+
+  afterAll(() => {
+    process.env.NODE_ENV = originalNodeEnv;
   });
 
   test("renderiza en modo dark por defecto y permite alternar a light", () => {
@@ -40,5 +47,21 @@ describe("ThemeToggle", () => {
 
     expect(document.documentElement).not.toHaveClass("dark");
     expect(screen.getByRole("button", { name: "Activar modo oscuro" })).toBeInTheDocument();
+  });
+
+  test("muestra badge de desarrollo cuando NODE_ENV es development", () => {
+    process.env.NODE_ENV = "development";
+
+    render(<ThemeToggle />);
+
+    expect(screen.getByText("DEV")).toBeInTheDocument();
+  });
+
+  test("no muestra badge de desarrollo cuando NODE_ENV es production", () => {
+    process.env.NODE_ENV = "production";
+
+    render(<ThemeToggle />);
+
+    expect(screen.queryByText("DEV")).not.toBeInTheDocument();
   });
 });
